@@ -143,6 +143,42 @@ export default function Invoices({ initialFilter }) {
     load();
   }
 
+  async function exportExcel() {
+    const XLSX = await import('xlsx'); // carga diferida: solo al exportar
+    // Hoja resumen con las facturas visibles + hoja de detalle con sus líneas.
+    const summary = visible.map((i) => ({
+      Nº: i.number,
+      Fecha: i.date,
+      Clienta: i.clientName || '',
+      Estado: i.status,
+      Base: i.totals?.base ?? 0,
+      IVA: i.totals?.vat ?? 0,
+      Total: i.totals?.total ?? 0,
+    }));
+
+    const detailRows = [];
+    for (const row of visible) {
+      const inv = await api.get('invoices', row.id);
+      for (const it of inv.items) {
+        detailRows.push({
+          Nº: inv.number,
+          Clienta: inv.clientName || '',
+          Concepto: it.description,
+          Cantidad: it.qty,
+          Precio: it.price,
+          'IVA %': it.vat,
+          Importe: (Number(it.qty) || 0) * (Number(it.price) || 0),
+        });
+      }
+    }
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summary), 'Facturas');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(detailRows), 'Líneas');
+    const stamp = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `facturas-witamaternidad-${stamp}.xlsx`);
+  }
+
   // ---- line item editing ----
   const setItem = (idx, field) => (e) => {
     const items = form.items.map((it, i) => (i === idx ? { ...it, [field]: e.target.value } : it));
@@ -174,6 +210,9 @@ export default function Invoices({ initialFilter }) {
             {s === '' ? 'Todas' : s === 'pendientes' ? 'Pendientes' : s}
           </button>
         ))}
+        <button className="export" onClick={exportExcel} disabled={visible.length === 0} title="Descargar las facturas visibles en Excel">
+          ↓ Exportar Excel
+        </button>
       </div>
 
       <table className="grid-table">

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, eur, fmtDate, gestWeeks } from '../api.js';
+import FppCalculator from '../components/FppCalculator.jsx';
 
 export default function Dashboard({ go }) {
   const [data, setData] = useState(null);
@@ -36,6 +37,8 @@ export default function Dashboard({ go }) {
       </div>
 
       <div className="panels">
+        <FppCalculator />
+
         <div className="panel">
           <div className="panel-head">
             <h2>Próximos partos</h2>

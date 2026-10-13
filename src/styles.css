@@ -144,6 +144,22 @@ body {
   font-weight: 700;
 }
 
+.export {
+  margin-left: auto;
+  font-weight: 700;
+  color: var(--green-dark);
+  border-color: var(--green);
+}
+
+.export:hover {
+  background: var(--green-light);
+}
+
+.export:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .link {
   border: none;
   background: transparent;
@@ -642,8 +658,46 @@ td.empty {
 
 .panels {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 16px;
+  align-items: start;
+}
+
+.fpp-calc .field {
+  margin-top: 4px;
+}
+
+.fpp-help {
+  font-size: 13px;
+  margin: 0 0 10px;
+}
+
+.fpp-result {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-light);
+}
+
+.fpp-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fpp-main strong {
+  font-family: var(--font-heading);
+  font-size: 24px;
+  color: var(--green-dark);
+}
+
+.fpp-sub {
+  margin-top: 8px;
+  font-size: 14px;
+  color: var(--text-soft);
+}
+
+.fpp-sub strong {
+  color: var(--green-dark);
 }
 
 .panel {
