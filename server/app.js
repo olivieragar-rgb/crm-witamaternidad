@@ -1,6 +1,7 @@
 import express from 'express';
 import { all, get, run, ready } from './db.js';
 import { searchItems } from '../src/search.js';
+import { sendMail, mailerConfigured } from './mailer.js';
 
 const app = express();
 app.use(express.json());
@@ -289,6 +290,64 @@ app.delete('/api/invoices/:id', async (req, res, next) => {
     if (info.changes === 0) return res.status(404).json({ error: 'No encontrado' });
     res.status(204).end();
   } catch (e) {
+    next(e);
+  }
+});
+
+// ---- enviar factura por email --------------------------------------------
+
+function invoiceEmailHtml(inv) {
+  const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
+  const money = (n) => `${(Number(n) || 0).toFixed(2)} €`;
+  const rows = inv.items
+    .map(
+      (it) =>
+        `<tr><td style="padding:8px;border-bottom:1px solid #ede7df">${esc(it.description)}</td>` +
+        `<td align="right" style="padding:8px;border-bottom:1px solid #ede7df">${it.qty}</td>` +
+        `<td align="right" style="padding:8px;border-bottom:1px solid #ede7df">${money(it.price)}</td>` +
+        `<td align="right" style="padding:8px;border-bottom:1px solid #ede7df">${money((Number(it.qty) || 0) * (Number(it.price) || 0))}</td></tr>`,
+    )
+    .join('');
+  return `<div style="font-family:Arial,sans-serif;color:#2e2a25;max-width:640px">
+    <h2 style="color:#476149">Witamaternidad</h2>
+    <p>Hola ${esc(inv.clientName || '')}, adjuntamos tu factura <strong>${esc(inv.number)}</strong> (${esc(inv.date)}).</p>
+    <table style="width:100%;border-collapse:collapse;margin:16px 0">
+      <tr style="color:#9c9489;font-size:12px;text-transform:uppercase">
+        <th align="left" style="padding:8px">Concepto</th><th align="right" style="padding:8px">Cant.</th>
+        <th align="right" style="padding:8px">Precio</th><th align="right" style="padding:8px">Importe</th>
+      </tr>${rows}
+    </table>
+    <p style="text-align:right;font-size:18px"><strong>Total: ${money(inv.totals.total)}</strong>
+      <br><span style="font-size:13px;color:#6b6259">Base ${money(inv.totals.base)} · IVA ${money(inv.totals.vat)}</span></p>
+    ${inv.notes ? `<p style="color:#6b6259;font-size:13px">${esc(inv.notes)}</p>` : ''}
+    <p style="color:#9c9489;font-size:12px">Hipnoparto · Lactancia · Granada y online</p>
+  </div>`;
+}
+
+app.get('/api/mail-status', (req, res) => res.json({ configured: mailerConfigured() }));
+
+app.post('/api/invoices/:id/email', async (req, res, next) => {
+  try {
+    const inv = await invoiceWithItems(Number(req.params.id));
+    if (!inv) return res.status(404).json({ error: 'No encontrado' });
+    const client = inv.clientId ? await get('SELECT email FROM clients WHERE id = ?', [inv.clientId]) : null;
+    const to = (req.body?.to || client?.email || '').trim();
+    if (!to) return res.status(400).json({ error: 'La clienta no tiene email; indica un destinatario.' });
+
+    const attachments = [];
+    if (req.body?.xlsxBase64) {
+      attachments.push({
+        filename: `factura-${inv.number}.xlsx`,
+        content: req.body.xlsxBase64,
+        encoding: 'base64',
+        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+    }
+
+    await sendMail({ to, subject: `Factura ${inv.number} · Witamaternidad`, html: invoiceEmailHtml(inv), attachments });
+    res.json({ ok: true, to });
+  } catch (e) {
+    if (e.code === 'MAIL_NOT_CONFIGURED') return res.status(400).json({ error: e.message });
     next(e);
   }
 });

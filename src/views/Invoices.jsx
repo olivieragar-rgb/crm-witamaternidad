@@ -190,6 +190,40 @@ export default function Invoices({ initialFilter }) {
     XLSX.writeFile(wb, `facturas-witamaternidad-${stamp}.xlsx`);
   }
 
+  async function emailInvoice(row) {
+    const inv = await api.get('invoices', row.id);
+    const to = window.prompt('Enviar la factura a (email):', inv.clientEmail || '');
+    if (to === null) return;
+    try {
+      const XLSX = await import('xlsx');
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(
+        wb,
+        XLSX.utils.json_to_sheet(
+          inv.items.map((it) => ({
+            Concepto: it.description,
+            Cantidad: it.qty,
+            Precio: it.price,
+            'IVA %': it.vat,
+            Importe: (Number(it.qty) || 0) * (Number(it.price) || 0),
+          })),
+        ),
+        'Factura',
+      );
+      const xlsxBase64 = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
+      const res = await fetch(`/api/invoices/${row.id}/email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to: to.trim() || undefined, xlsxBase64 }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Error al enviar');
+      alert(`Factura enviada a ${data.to}`);
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
   // ---- line item editing ----
   const setItem = (idx, field) => (e) => {
     const items = form.items.map((it, i) => (i === idx ? { ...it, [field]: e.target.value } : it));
@@ -265,6 +299,7 @@ export default function Invoices({ initialFilter }) {
               <td className="num">{eur(i.totals?.total)}</td>
               <td className="row-actions">
                 <button onClick={() => exportPdf(i)}>PDF</button>
+                <button onClick={() => emailInvoice(i)}>Email</button>
                 <button onClick={() => edit(i)}>Editar</button>
                 <button className="danger" onClick={() => remove(i.id)}>
                   Borrar
