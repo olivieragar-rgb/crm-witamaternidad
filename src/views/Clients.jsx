@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, fmtDate } from '../api.js';
+import { api, fmtDate, gestWeeks } from '../api.js';
 import { searchItems } from '../search.js';
 import { Toolbar, Badge, Modal, Field, EmptyRow } from '../components/ui.jsx';
 
@@ -9,9 +9,9 @@ const MODES = ['Presencial (Granada)', 'Online'];
 const STATUSES = ['Nuevo contacto', 'Activa', 'Finalizada'];
 const text = (c) => `${c.name} ${c.email} ${c.phone} ${c.service} ${c.mode} ${c.status} ${c.notes}`;
 
-export default function Clients() {
+export default function Clients({ initialFilter }) {
   const [rows, setRows] = useState([]);
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(initialFilter?.q || '');
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(EMPTY);
   const [editingId, setEditingId] = useState(null);
@@ -77,7 +77,20 @@ export default function Clients() {
               </td>
               <td>{c.service}</td>
               <td className="muted">{c.mode}</td>
-              <td className="muted">{fmtDate(c.dueDate)}</td>
+              <td className="muted">
+                {c.dueDate ? (
+                  <>
+                    {fmtDate(c.dueDate)}
+                    {(() => {
+                      const g = gestWeeks(c.dueDate);
+                      if (!g) return null;
+                      return <div className={'gest' + (g.past ? ' gest-past' : '')}>{g.past ? 'FPP pasada' : `${g.label} sem`}</div>;
+                    })()}
+                  </>
+                ) : (
+                  '—'
+                )}
+              </td>
               <td>
                 <Badge value={c.status} />
               </td>

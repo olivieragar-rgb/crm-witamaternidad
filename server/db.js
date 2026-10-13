@@ -103,6 +103,11 @@ const SCHEMA = `
     invoiceId INTEGER NOT NULL, description TEXT NOT NULL DEFAULT '',
     qty REAL NOT NULL DEFAULT 1, price REAL NOT NULL DEFAULT 0, vat REAL NOT NULL DEFAULT 0
   );
+  CREATE TABLE IF NOT EXISTS notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT NOT NULL DEFAULT '', text TEXT NOT NULL DEFAULT '',
+    createdAt TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 `;
 
 let readyPromise;

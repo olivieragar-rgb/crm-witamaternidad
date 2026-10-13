@@ -4,31 +4,39 @@ import Clients from './views/Clients.jsx';
 import Services from './views/Services.jsx';
 import Appointments from './views/Appointments.jsx';
 import Invoices from './views/Invoices.jsx';
+import Calendar from './views/Calendar.jsx';
 
 const NAV = [
-  { id: 'dashboard', label: 'Panel', icon: '◈' },
+  { id: 'dashboard', label: 'Inicio', icon: '◈' },
   { id: 'clients', label: 'Clientas', icon: '❤' },
+  { id: 'calendar', label: 'Calendario', icon: '▦' },
   { id: 'appointments', label: 'Citas', icon: '◷' },
   { id: 'services', label: 'Servicios', icon: '✦' },
-  { id: 'invoices', label: 'Facturas', icon: '▦' },
+  { id: 'invoices', label: 'Facturas', icon: '€' },
 ];
 
 export default function App() {
-  const [view, setView] = useState('dashboard');
+  // route = { view, filter } — filter lets the dashboard deep-link into a view.
+  const [route, setRoute] = useState({ view: 'dashboard', filter: null });
+  const go = (view, filter = null) => setRoute({ view, filter });
 
   return (
     <div className="shell">
       <aside className="sidebar">
-        <div className="brand">
-          <span className="brand-name">Witamaternidad</span>
-          <span className="brand-sub">Hipnoparto · Lactancia</span>
-        </div>
+        <button className="brand" onClick={() => go('dashboard')} title="Ir al inicio">
+          <img src="/logo.webp" alt="Wita Maternidad" className="brand-logo" />
+          <span className="brand-text">
+            <span className="brand-name">Witamaternidad</span>
+            <span className="brand-sub">Hipnoparto · Lactancia</span>
+          </span>
+        </button>
+
         <nav>
           {NAV.map((n) => (
             <button
               key={n.id}
-              className={'nav-item' + (view === n.id ? ' active' : '')}
-              onClick={() => setView(n.id)}
+              className={'nav-item' + (route.view === n.id ? ' active' : '')}
+              onClick={() => go(n.id)}
             >
               <span className="nav-icon">{n.icon}</span>
               {n.label}
@@ -39,11 +47,12 @@ export default function App() {
       </aside>
 
       <main className="content">
-        {view === 'dashboard' && <Dashboard go={setView} />}
-        {view === 'clients' && <Clients />}
-        {view === 'appointments' && <Appointments />}
-        {view === 'services' && <Services />}
-        {view === 'invoices' && <Invoices />}
+        {route.view === 'dashboard' && <Dashboard go={go} />}
+        {route.view === 'clients' && <Clients initialFilter={route.filter} />}
+        {route.view === 'calendar' && <Calendar />}
+        {route.view === 'appointments' && <Appointments />}
+        {route.view === 'services' && <Services />}
+        {route.view === 'invoices' && <Invoices initialFilter={route.filter} />}
       </main>
     </div>
   );

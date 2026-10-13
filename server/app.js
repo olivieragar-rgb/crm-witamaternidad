@@ -136,6 +136,18 @@ app.use(
   }),
 );
 
+// ---- calendar notes ------------------------------------------------------
+
+app.use(
+  '/api/notes',
+  crud({
+    table: 'notes',
+    fields: ['date', 'text'],
+    required: ['date'],
+    orderBy: 'date',
+  }),
+);
+
 // ---- appointments (joined names) -----------------------------------------
 
 app.get('/api/appointments', async (req, res, next) => {

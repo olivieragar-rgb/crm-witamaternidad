@@ -4,6 +4,8 @@ import { searchItems } from '../search.js';
 import { Toolbar, Badge, Modal, Field, EmptyRow } from '../components/ui.jsx';
 
 const STATUSES = ['Borrador', 'Enviada', 'Pagada'];
+const escapeHtml = (s) =>
+  String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const blankItem = () => ({ description: '', qty: 1, price: 0, vat: 0 });
 const EMPTY = () => ({ number: '', clientId: '', date: new Date().toISOString().slice(0, 10), status: 'Borrador', notes: '', items: [blankItem()] });
 const text = (i) => `${i.number} ${i.clientName} ${i.status}`;
@@ -20,11 +22,12 @@ function totals(items) {
   return { base: r(base), vat: r(vat), total: r(base + vat) };
 }
 
-export default function Invoices() {
+export default function Invoices({ initialFilter }) {
   const [rows, setRows] = useState([]);
   const [clients, setClients] = useState([]);
   const [services, setServices] = useState([]);
   const [query, setQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState(initialFilter?.status || '');
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(EMPTY());
   const [editingId, setEditingId] = useState(null);
@@ -37,8 +40,72 @@ export default function Invoices() {
     api.list('services').then(setServices);
   }, []);
 
-  const visible = searchItems(rows, query, text);
+  const bySearch = searchItems(rows, query, text);
+  const visible = bySearch.filter((i) => {
+    if (!statusFilter) return true;
+    if (statusFilter === 'pendientes') return i.status !== 'Pagada';
+    return i.status === statusFilter;
+  });
   const set = (f) => (e) => setForm({ ...form, [f]: e.target.value });
+
+  async function exportPdf(row) {
+    const inv = await api.get('invoices', row.id);
+    const win = window.open('', '_blank');
+    if (!win) {
+      alert('Permite las ventanas emergentes para exportar el PDF.');
+      return;
+    }
+    const rowsHtml = inv.items
+      .map(
+        (it) => `<tr>
+          <td>${escapeHtml(it.description)}</td>
+          <td class="n">${it.qty}</td>
+          <td class="n">${eur(it.price)}</td>
+          <td class="n">${it.vat}%</td>
+          <td class="n">${eur((Number(it.qty) || 0) * (Number(it.price) || 0))}</td>
+        </tr>`,
+      )
+      .join('');
+    win.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8">
+      <title>Factura ${escapeHtml(inv.number)}</title>
+      <style>
+        @import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Playfair+Display:wght@600&display=swap');
+        * { box-sizing: border-box; }
+        body { font-family: 'Lato', sans-serif; color: #2e2a25; max-width: 720px; margin: 40px auto; padding: 0 24px; }
+        header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #5b7f5e; padding-bottom: 16px; margin-bottom: 24px; }
+        .brand { font-family: 'Playfair Display', serif; font-size: 26px; color: #476149; }
+        .brand small { display:block; font-family:'Lato'; font-size:12px; color:#9c9489; font-weight:400; }
+        h1 { font-family: 'Playfair Display', serif; font-size: 22px; margin: 0; }
+        .meta { text-align: right; font-size: 14px; color: #6b6259; }
+        table { width: 100%; border-collapse: collapse; margin: 24px 0; }
+        th { text-align: left; font-size: 12px; text-transform: uppercase; color: #9c9489; border-bottom: 1px solid #e5ddd4; padding: 8px 6px; }
+        td { padding: 10px 6px; border-bottom: 1px solid #ede7df; font-size: 14px; }
+        .n { text-align: right; }
+        .totals { margin-left: auto; width: 260px; }
+        .totals div { display: flex; justify-content: space-between; padding: 4px 6px; font-size: 14px; }
+        .totals .grand { border-top: 2px solid #5b7f5e; margin-top: 4px; padding-top: 8px; font-size: 18px; font-weight: 700; color: #476149; }
+        .notes { margin-top: 28px; font-size: 13px; color: #6b6259; }
+        @media print { body { margin: 0; } }
+      </style></head><body>
+      <header>
+        <div class="brand">Witamaternidad<small>Hipnoparto · Lactancia · Granada</small></div>
+        <div class="meta"><strong>Factura ${escapeHtml(inv.number)}</strong><br>${fmtDate(inv.date)}<br>Estado: ${escapeHtml(inv.status)}</div>
+      </header>
+      <h1>${escapeHtml(inv.clientName || 'Clienta')}</h1>
+      <table>
+        <thead><tr><th>Concepto</th><th class="n">Cant.</th><th class="n">Precio</th><th class="n">IVA</th><th class="n">Importe</th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+      <div class="totals">
+        <div><span>Base</span><span>${eur(inv.totals.base)}</span></div>
+        <div><span>IVA</span><span>${eur(inv.totals.vat)}</span></div>
+        <div class="grand"><span>Total</span><span>${eur(inv.totals.total)}</span></div>
+      </div>
+      ${inv.notes ? `<div class="notes">${escapeHtml(inv.notes)}</div>` : ''}
+      <script>window.onload = () => { window.print(); };<\/script>
+      </body></html>`);
+    win.document.close();
+  }
 
   function newRow() {
     setForm(EMPTY());
@@ -96,6 +163,19 @@ export default function Invoices() {
     <section>
       <Toolbar title="Facturas" query={query} setQuery={setQuery} onNew={newRow} newLabel="Nueva factura" />
 
+      <div className="filters">
+        <span className="muted">Estado:</span>
+        {['', 'pendientes', 'Borrador', 'Enviada', 'Pagada'].map((s) => (
+          <button
+            key={s || 'todas'}
+            className={'chip' + (statusFilter === s ? ' active' : '')}
+            onClick={() => setStatusFilter(s)}
+          >
+            {s === '' ? 'Todas' : s === 'pendientes' ? 'Pendientes' : s}
+          </button>
+        ))}
+      </div>
+
       <table className="grid-table">
         <thead>
           <tr>
@@ -120,6 +200,7 @@ export default function Invoices() {
               </td>
               <td className="num">{eur(i.totals?.total)}</td>
               <td className="row-actions">
+                <button onClick={() => exportPdf(i)}>PDF</button>
                 <button onClick={() => edit(i)}>Editar</button>
                 <button className="danger" onClick={() => remove(i.id)}>
                   Borrar
