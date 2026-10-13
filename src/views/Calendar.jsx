@@ -114,13 +114,23 @@ export default function Calendar() {
                   }}
                 >
                   <span className="cal-num">{day.getDate()}</span>
-                  <span className="cal-marks">
-                    {info?.appts?.map((a) => (
-                      <span key={'a' + a.id} className="dot dot-appt" title={a.clientName || 'Cita'} />
+                  <span className="cal-events">
+                    {(info?.appts || []).slice(0, 3).map((a) => (
+                      <span
+                        key={'a' + a.id}
+                        className={'event event-' + (a.status || '').toLowerCase()}
+                        title={`${(a.date || '').slice(11, 16)} · ${a.clientName || 'Cita'}${a.serviceName ? ' · ' + a.serviceName : ''}`}
+                      >
+                        <span className="event-time">{(a.date || '').slice(11, 16)}</span>
+                        {a.clientName || 'Cita'}
+                      </span>
                     ))}
-                    {info?.notes?.map((n) => (
-                      <span key={'n' + n.id} className="dot dot-note" title={n.text} />
-                    ))}
+                    {info?.appts?.length > 3 && <span className="event-more">+{info.appts.length - 3} más</span>}
+                    {info?.notes?.length > 0 && (
+                      <span className="event event-note" title={info.notes.map((n) => n.text).join(' · ')}>
+                        {info.notes.length === 1 ? '1 nota' : `${info.notes.length} notas`}
+                      </span>
+                    )}
                   </span>
                 </button>
               );

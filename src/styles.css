@@ -210,15 +210,17 @@ body {
 }
 
 .cal-cell {
-  aspect-ratio: 1 / 1;
+  min-height: 92px;
   border: 1px solid var(--border-light);
   border-radius: var(--radius);
   background: var(--bg);
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: stretch;
+  gap: 4px;
   padding: 6px;
   cursor: pointer;
+  overflow: hidden;
   transition: background 0.12s, border-color 0.12s;
 }
 
@@ -244,11 +246,54 @@ body {
   color: var(--text-soft);
 }
 
-.cal-marks {
+.cal-events {
   display: flex;
-  flex-wrap: wrap;
-  gap: 3px;
-  margin-top: auto;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.event {
+  display: block;
+  font-size: 11px;
+  line-height: 1.3;
+  padding: 2px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+  background: var(--green-light);
+  color: var(--green-dark);
+  font-weight: 700;
+}
+
+.event-time {
+  opacity: 0.7;
+  margin-right: 3px;
+  font-weight: 400;
+}
+
+.event-realizada {
+  background: var(--bg-warm);
+  color: var(--text-muted);
+}
+
+.event-cancelada {
+  background: var(--terracotta-light);
+  color: var(--terracotta-dark);
+  text-decoration: line-through;
+}
+
+.event-note {
+  background: #f6edd6;
+  color: #997420;
+}
+
+.event-more {
+  font-size: 10px;
+  color: var(--text-muted);
+  padding-left: 5px;
 }
 
 .dot {
