@@ -43,7 +43,7 @@ export default function App() {
             </button>
           ))}
         </nav>
-        <div className="sidebar-foot">Granada · online</div>
+        <div className="sidebar-foot">WawaywawO</div>
       </aside>
 
       <main className="content">

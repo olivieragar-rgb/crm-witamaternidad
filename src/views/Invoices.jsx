@@ -28,6 +28,7 @@ export default function Invoices({ initialFilter }) {
   const [services, setServices] = useState([]);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState(initialFilter?.status || '');
+  const [months, setMonths] = useState([]); // 'YYYY-MM' seleccionados; vacío = todos
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(EMPTY());
   const [editingId, setEditingId] = useState(null);
@@ -40,11 +41,21 @@ export default function Invoices({ initialFilter }) {
     api.list('services').then(setServices);
   }, []);
 
+  // Meses disponibles (YYYY-MM) a partir de las fechas, más recientes primero.
+  const availableMonths = [...new Set(rows.map((i) => (i.date || '').slice(0, 7)).filter(Boolean))].sort().reverse();
+  const monthLabel = (ym) => {
+    const [y, m] = ym.split('-');
+    const name = new Date(Number(y), Number(m) - 1, 1).toLocaleDateString('es-ES', { month: 'short', year: 'numeric' });
+    return name.charAt(0).toUpperCase() + name.slice(1);
+  };
+  const toggleMonth = (ym) => setMonths((ms) => (ms.includes(ym) ? ms.filter((x) => x !== ym) : [...ms, ym]));
+
   const bySearch = searchItems(rows, query, text);
   const visible = bySearch.filter((i) => {
-    if (!statusFilter) return true;
-    if (statusFilter === 'pendientes') return i.status !== 'Pagada';
-    return i.status === statusFilter;
+    if (statusFilter === 'pendientes' && i.status === 'Pagada') return false;
+    if (statusFilter && statusFilter !== 'pendientes' && i.status !== statusFilter) return false;
+    if (months.length && !months.includes((i.date || '').slice(0, 7))) return false;
+    return true;
   });
   const set = (f) => (e) => setForm({ ...form, [f]: e.target.value });
 
@@ -210,10 +221,24 @@ export default function Invoices({ initialFilter }) {
             {s === '' ? 'Todas' : s === 'pendientes' ? 'Pendientes' : s}
           </button>
         ))}
-        <button className="export" onClick={exportExcel} disabled={visible.length === 0} title="Descargar las facturas visibles en Excel">
-          ↓ Exportar Excel
+        <button className="export" onClick={exportExcel} disabled={visible.length === 0} title="Descargar las facturas filtradas en Excel">
+          ↓ Exportar Excel ({visible.length})
         </button>
       </div>
+
+      {availableMonths.length > 1 && (
+        <div className="filters">
+          <span className="muted">Mes:</span>
+          <button className={'chip' + (months.length === 0 ? ' active' : '')} onClick={() => setMonths([])}>
+            Todos
+          </button>
+          {availableMonths.map((ym) => (
+            <button key={ym} className={'chip' + (months.includes(ym) ? ' active' : '')} onClick={() => toggleMonth(ym)}>
+              {monthLabel(ym)}
+            </button>
+          ))}
+        </div>
+      )}
 
       <table className="grid-table">
         <thead>

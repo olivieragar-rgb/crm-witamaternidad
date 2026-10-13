@@ -158,9 +158,13 @@ async function seed() {
   if ((await count('invoices')) === 0) {
     const inv = 'INSERT INTO invoices (number, clientId, date, status, notes) VALUES (?, ?, ?, ?, ?)';
     const item = 'INSERT INTO invoice_items (invoiceId, description, qty, price, vat) VALUES (?, ?, ?, ?, ?)';
-    const i1 = (await run(inv, [`${year}-0001`, 1, thisMonth('05'), 'Pagada', ''])).lastInsertRowid;
+    const prev = new Date();
+    prev.setMonth(prev.getMonth() - 1, 18);
+    const i0 = (await run(inv, [`${year}-0001`, 3, prev.toISOString().slice(0, 10), 'Pagada', ''])).lastInsertRowid;
+    await run(item, [i0, 'Sesión suelta de preparación', 2, 65, 0]);
+    const i1 = (await run(inv, [`${year}-0002`, 1, thisMonth('05'), 'Pagada', ''])).lastInsertRowid;
     await run(item, [i1, 'Hipnoparto · Programa completo', 1, 280, 0]);
-    const i2 = (await run(inv, [`${year}-0002`, 2, thisMonth('12'), 'Enviada', ''])).lastInsertRowid;
+    const i2 = (await run(inv, [`${year}-0003`, 2, thisMonth('12'), 'Enviada', ''])).lastInsertRowid;
     await run(item, [i2, 'Consulta de lactancia', 1, 60, 0]);
   }
 }
