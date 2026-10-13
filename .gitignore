@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.vercel/
+
+# Local dev database (production uses Turso)
+server/crm.db
+server/crm.db-*
+
+# Logs and env
+*.log
+.env
+.env.*
+!.env.example
