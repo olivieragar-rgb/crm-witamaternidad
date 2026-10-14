@@ -1494,3 +1494,68 @@ a.btn:hover {
   display: block;
   margin-top: 4px;
 }
+
+
+/* ---- resumen de impuestos ---- */
+.tax-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.tax-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-sm);
+}
+
+.tax-card h3 {
+  font-family: var(--font-body);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--green-dark);
+  margin: 0 0 12px;
+}
+
+.tax-card h3 .muted {
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+
+.tax-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+  font-size: 14px;
+  color: var(--text-soft);
+}
+
+.tax-line.grand {
+  border-top: 1px solid var(--border);
+  margin-top: 8px;
+  padding-top: 10px;
+  font-size: 17px;
+  color: var(--green-dark);
+}
+
+.tax-note {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.grid-table tfoot td {
+  border-top: 2px solid var(--border);
+  padding-top: 12px;
+}
+
+@media (max-width: 760px) {
+  .tax-summary {
+    grid-template-columns: 1fr;
+  }
+}

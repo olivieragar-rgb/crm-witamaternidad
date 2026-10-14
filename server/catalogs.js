@@ -14,6 +14,21 @@ export const TYPES = {
   mode: { label: 'Modalidades', defaults: ['Presencial (Granada)', 'Online'] },
   clientStatus: { label: 'Estados de clienta', defaults: ['Nuevo contacto', 'Activa', 'Finalizada'] },
   appointmentStatus: { label: 'Estados de cita', defaults: ['Programada', 'Realizada', 'Cancelada'] },
+  expenseCategory: {
+    label: 'Categorias de gasto',
+    defaults: [
+      'Material y fungible',
+      'Formacion',
+      'Cuota de autonomos',
+      'Alquiler del local',
+      'Suministros',
+      'Asesoria y gestoria',
+      'Seguros',
+      'Publicidad y web',
+      'Desplazamientos',
+      'Otros',
+    ],
+  },
   consentChannel: {
     label: 'Canales de consentimiento',
     defaults: ['Presencial', 'Email', 'Formulario web', 'Papel firmado'],

@@ -82,6 +82,18 @@ export const api = {
     return req('GET', `/api/audit${qs ? `?${qs}` : ''}`);
   },
 
+  // Gastos e impuestos
+  expenses: (params = {}) => {
+    const qs = new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v !== '' && v !== undefined && v !== null),
+    ).toString();
+    return req('GET', `/api/expenses${qs ? `?${qs}` : ''}`);
+  },
+  createExpense: (body) => req('POST', '/api/expenses', body),
+  updateExpense: (id, body) => req('PUT', `/api/expenses/${id}`, body),
+  removeExpense: (id) => req('DELETE', `/api/expenses/${id}`),
+  taxes: (year, quarter) => req('GET', `/api/taxes?year=${year}&quarter=${quarter}`),
+
   // Guardia alrededor de la FPP
   oncall: () => req('GET', '/api/oncall'),
   oncallConflicts: (dueDate, excludeId) =>

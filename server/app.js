@@ -9,6 +9,7 @@ import { settingsRouter, getSetting } from './settings.js';
 import { catalogsRouter } from './catalogs.js';
 import { privacyRouter, auditRouter } from './privacy.js';
 import { onCallRouter } from './oncall.js';
+import { expensesRouter, taxesRouter } from './expenses.js';
 import { securityHeaders, sameOrigin } from './security.js';
 import { attachUser, requireAuth, authRouter, usersRouter, audit } from './auth.js';
 
@@ -145,6 +146,8 @@ function crud({ table, fields, required = [], searchText, orderBy = 'id DESC', b
 app.use('/api/clients', privacyRouter);
 app.use('/api/audit', auditRouter);
 app.use('/api/oncall', onCallRouter);
+app.use('/api/expenses', expensesRouter);
+app.use('/api/taxes', taxesRouter);
 
 // Con datos de categoria especial hay que poder demostrar quien vio que, no
 // solo quien cambio que.

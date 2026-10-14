@@ -153,6 +153,17 @@ const SCHEMA = `
     value TEXT NOT NULL DEFAULT '{}',
     updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
   );
+  CREATE TABLE IF NOT EXISTS expenses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT NOT NULL DEFAULT '', description TEXT NOT NULL DEFAULT '',
+    supplier TEXT NOT NULL DEFAULT '', supplierTaxId TEXT NOT NULL DEFAULT '',
+    category TEXT NOT NULL DEFAULT '',
+    base REAL NOT NULL DEFAULT 0, vatRate REAL NOT NULL DEFAULT 0,
+    deductible INTEGER NOT NULL DEFAULT 1,
+    notes TEXT NOT NULL DEFAULT '',
+    createdAt TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses (date DESC);
   CREATE TABLE IF NOT EXISTS catalogs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     type TEXT NOT NULL, value TEXT NOT NULL,
