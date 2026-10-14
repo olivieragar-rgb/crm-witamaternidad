@@ -5,9 +5,12 @@
   --bg-warm: #f3ede5;
   --card: #fefcf9;
 
-  --text: #2e2a25;
-  --text-soft: #6b6259;
-  --text-muted: #9c9489;
+  /* Los tres pasos de texto, todos por encima de 4,5:1 sobre cualquiera de
+     los fondos de la aplicacion. El gris claro de antes (#9c9489) se quedaba
+     en 2,92:1: legible para quien ve bien y poco mas. */
+  --text: #2e2a25; /* 13,9:1 */
+  --text-soft: #554d44; /* 8,1:1 */
+  --text-muted: #6e6659; /* 5,5:1 sobre tarjeta, 4,9 sobre el fondo calido */
 
   --green: #5b7f5e;
   --green-dark: #476149;
@@ -117,14 +120,32 @@ body {
 
 .sidebar {
   background: var(--green-dark);
-  color: rgba(255, 255, 255, 0.85);
+  color: #dfe4dd;
   padding: 28px 18px;
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 24px;
   position: sticky;
   top: 0;
   height: 100vh;
+  /* El menu ha ido creciendo y en pantallas bajas no cabia: al tener el alto
+     fijo, los ultimos elementos se salian del verde. Ahora el verde siempre
+     llega abajo y lo que se desplaza, si hace falta, es solo el menu. */
+  overflow: hidden;
+}
+
+.sidebar nav {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  /* Al llegar al final del menu no se arrastra el scroll de la pagina. */
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
+.sidebar-foot {
+  flex: none;
 }
 
 .brand {
@@ -149,8 +170,8 @@ body {
 /* El logo es cuadrado y su dibujo va dentro de un circulo con margen de
    sobra, asi que el recorte redondo solo quita las esquinas de fondo. */
 .brand-logo {
-  width: 132px;
-  height: 132px;
+  width: 116px;
+  height: 116px;
   display: block;
   border-radius: var(--radius-full);
   object-fit: cover;
@@ -421,6 +442,15 @@ body {
   gap: 4px;
 }
 
+.sidebar nav::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar nav::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 3px;
+}
+
 .nav-item {
   display: flex;
   align-items: center;
@@ -429,7 +459,7 @@ body {
   text-align: left;
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.8);
+  color: #dfe4dd;
   padding: 11px 14px;
   border-radius: var(--radius);
   font-size: 15px;
@@ -1173,7 +1203,7 @@ td.empty {
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: var(--radius);
-  color: rgba(255, 255, 255, 0.9);
+  color: #eef1ed;
   cursor: pointer;
   font-family: var(--font-body);
   text-align: left;
@@ -1212,7 +1242,7 @@ td.empty {
 
 .user-role {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
+  color: #d4d9d2;
 }
 
 .user-menu {
@@ -1452,7 +1482,7 @@ a.btn:hover {
 
 .sidebar-credit {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.35);
+  color: #ccd2ca;
   padding: 0 8px 8px;
 }
 
@@ -1882,5 +1912,120 @@ a.btn:hover {
 @media (max-width: 760px) {
   .tool-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ---- foco visible ---- */
+/* Quitar el anillo del navegador sin poner otro deja a quien navega con
+   teclado sin saber donde esta. Uno solo, consistente, y solo cuando el foco
+   viene del teclado. */
+:where(button, a, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 2px;
+  border-radius: var(--radius);
+}
+
+.sidebar :where(button, a):focus-visible {
+  outline-color: var(--gold);
+}
+
+/* ---- area de pulsacion ---- */
+/* En raton 26px de alto bastan; con el dedo no. Donde el puntero es grueso
+   (movil o tablet) los controles crecen al minimo recomendado. */
+@media (pointer: coarse) {
+  .row-actions button,
+  .row-actions a.btn,
+  .pending-list button,
+  .chip,
+  .catalog-list button,
+  .catalog-add button,
+  .pager button,
+  .detail-actions button,
+  .detail-actions a.btn {
+    min-height: 44px;
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+  .row-actions {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
+
+/* ---- cifras que se leen en columna ---- */
+/* Importes y percentiles con cifras de ancho fijo: si no, las columnas de
+   numeros bailan de una fila a otra y cuesta compararlas. */
+.grid-table .num,
+.totals strong,
+.tax-line strong,
+.item-row .num,
+.line-total {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- tablas anchas en pantallas estrechas ---- */
+.table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+.table-wrap .grid-table {
+  min-width: 620px;
+}
+
+/* ---- saltar al contenido ---- */
+/* Antes del contenido hay diez elementos de menu: con teclado hay que poder
+   saltarlos. */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  background: var(--card);
+  color: var(--text);
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  font-size: 14px;
+}
+
+.skip-link:focus {
+  left: 12px;
+  top: 12px;
+}
+
+/* ---- ventanas de poca altura ---- */
+/* En un portatil de pantalla baja el logo se comia el menu. Por debajo de
+   760px de alto encoge y la cabecera se aprieta, para que quepan mas
+   elementos sin tener que desplazar. */
+@media (min-width: 761px) and (max-height: 760px) {
+  .sidebar {
+    padding: 18px 16px;
+    gap: 16px;
+  }
+  .brand-logo {
+    width: 76px;
+    height: 76px;
+  }
+  .brand-name {
+    font-size: 18px;
+  }
+  .nav-item {
+    padding: 9px 14px;
+  }
+}
+
+@media (min-width: 761px) and (max-height: 580px) {
+  .brand-logo {
+    width: 52px;
+    height: 52px;
+  }
+  .brand {
+    flex-direction: row;
+    gap: 10px;
+  }
+  .sidebar-credit {
+    display: none;
   }
 }

@@ -336,7 +336,8 @@ export default function Invoices({ initialFilter }) {
         ))}
       </div>
 
-      <table className="grid-table">
+      <div className="table-wrap">
+        <table className="grid-table">
         <thead>
           <tr>
             <th>Nº</th>
@@ -382,7 +383,8 @@ export default function Invoices({ initialFilter }) {
           ))}
           {rows.length === 0 && <EmptyRow colSpan={6} />}
         </tbody>
-      </table>
+        </table>
+      </div>
 
       {pages > 1 && (
         <div className="pager">

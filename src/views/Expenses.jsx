@@ -130,7 +130,8 @@ export default function Expenses() {
 
       {taxes && <TaxSummary t={taxes} />}
 
-      <table className="grid-table">
+      <div className="table-wrap">
+        <table className="grid-table">
         <thead>
           <tr>
             <th>Fecha</th>
@@ -186,7 +187,8 @@ export default function Expenses() {
             </tr>
           </tfoot>
         )}
-      </table>
+        </table>
+      </div>
 
       {open && (
         <Modal

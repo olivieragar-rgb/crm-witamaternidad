@@ -134,6 +134,10 @@ function Shell({ session, route, go, menuOpen, setMenuOpen, pwOpen, setPwOpen, l
 
   return (
     <div className="shell">
+      {/* Con teclado hay diez elementos de menu antes del contenido. */}
+      <a className="skip-link" href="#contenido">
+        Saltar al contenido
+      </a>
       <aside className="sidebar">
         <button className="brand" onClick={() => go('dashboard')} title="Ir al inicio">
           <img src="/logo.webp" alt="" className="brand-logo" />
@@ -146,8 +150,11 @@ function Shell({ session, route, go, menuOpen, setMenuOpen, pwOpen, setPwOpen, l
               key={n.id}
               className={'nav-item' + (route.view === n.id ? ' active' : '')}
               onClick={() => go(n.id)}
+              aria-current={route.view === n.id ? 'page' : undefined}
             >
-              <span className="nav-icon">{n.icon}</span>
+              <span className="nav-icon" aria-hidden="true">
+                {n.icon}
+              </span>
               {n.label}
             </button>
           ))}
@@ -180,7 +187,7 @@ function Shell({ session, route, go, menuOpen, setMenuOpen, pwOpen, setPwOpen, l
 
       {/* key por vista: React remonta al cambiar de seccion y con eso se
           dispara sola la animacion de entrada definida en CSS. */}
-      <main className="content" key={route.view}>
+      <main className="content" id="contenido" tabIndex={-1} key={route.view}>
         {route.view === 'dashboard' && <Dashboard go={go} />}
         {route.view === 'clients' && <Clients initialFilter={route.filter} />}
         {route.view === 'calendar' && <Calendar />}
