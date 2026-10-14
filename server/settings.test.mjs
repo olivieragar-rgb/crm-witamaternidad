@@ -127,6 +127,19 @@ test('un campo numerico que no viene usa su valor por defecto, no null', async (
   assert.equal(res.data.active, 1);
 });
 
+test('un campo de texto que no viene usa el DEFAULT de la tabla', async () => {
+  // Una cita creada sin estado tiene que quedar Programada. Antes el INSERT
+  // metia cadena vacia y pisaba el valor por defecto de la columna.
+  const c = (await a.post('/api/clients', { name: 'Para la cita' })).data;
+  const cita = await a.post('/api/appointments', { clientId: c.id, date: '2026-12-01 10:00' });
+  assert.equal(cita.status, 201);
+  assert.equal(cita.data.status, 'Programada');
+  assert.equal(cita.data.mode, '', 'lo que no tiene DEFAULT si queda vacio');
+
+  // Y una clienta sin estado queda como nuevo contacto.
+  assert.equal((await a.post('/api/clients', { name: 'Sin estado' })).data.status, 'Nuevo contacto');
+});
+
 test('la siembra no duplica al reiniciar', async () => {
   const { seedCatalogs } = await import('./catalogs.js');
   const antes = (await a.get('/api/catalogs')).data.values.mode.length;

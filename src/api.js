@@ -82,6 +82,11 @@ export const api = {
     return req('GET', `/api/audit${qs ? `?${qs}` : ''}`);
   },
 
+  // Recordatorios
+  reminders: () => req('GET', '/api/reminders'),
+  reminderPreview: (kind, id) => req('GET', `/api/reminders/preview/${kind}/${id}`),
+  sendReminder: (kind, id) => req('POST', `/api/reminders/${kind}/${id}`, {}),
+
   // Gastos e impuestos
   expenses: (params = {}) => {
     const qs = new URLSearchParams(

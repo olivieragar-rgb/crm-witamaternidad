@@ -1559,3 +1559,69 @@ a.btn:hover {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* ---- pendiente de avisar ---- */
+.stat.warn {
+  border-color: var(--terracotta);
+  background: var(--terracotta-light);
+}
+
+.stat.warn .stat-num {
+  color: var(--terracotta-dark);
+}
+
+.pending-panel {
+  margin-bottom: 22px;
+}
+
+.pending-title {
+  font-family: var(--font-body);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin: 18px 0 8px;
+}
+
+.pending-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pending-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 12px;
+  background: var(--bg);
+  border-radius: var(--radius);
+  font-size: 14px;
+}
+
+.pending-list button {
+  flex: none;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  font-family: var(--font-body);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.pending-list button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.modal-body textarea[readonly],
+.modal-body input[readonly] {
+  background: var(--bg-warm);
+  color: var(--text-soft);
+}

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, eur, fmtDate } from '../api.js';
 import { Toolbar, Badge, Modal, Field, EmptyRow } from '../components/ui.jsx';
 import { useConfig, options } from '../config.jsx';
+import ReminderModal from '../components/ReminderModal.jsx';
 
 const PAYMENT_STATES = ['Emitida', 'Enviada', 'Pagada'];
 const FILTERS = [
@@ -64,6 +65,7 @@ export default function Invoices({ initialFilter }) {
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState('');
   const [detail, setDetail] = useState(null); // factura emitida que se está mirando
+  const [reminder, setReminder] = useState(null); // id de la factura a recordar
 
   const load = useCallback(
     () => api.invoices({ q: query, status, year, month, page }).then(setData),
@@ -404,6 +406,20 @@ export default function Invoices({ initialFilter }) {
           onRectify={() => rectify(detail)}
           onVoid={() => voidInvoice(detail)}
           onEmail={() => emailInvoice(detail)}
+          onRemind={() => setReminder(detail.id)}
+        />
+      )}
+
+      {reminder && (
+        <ReminderModal
+          kind="invoice"
+          id={reminder}
+          onClose={() => setReminder(null)}
+          onSent={(to) => {
+            setReminder(null);
+            load();
+            alert(`Recordatorio enviado a ${to}`);
+          }}
         />
       )}
 
@@ -541,7 +557,7 @@ export default function Invoices({ initialFilter }) {
 }
 
 /** Ficha de una factura ya emitida: se mira, no se edita. */
-function InvoiceDetail({ inv, onClose, onStatus, onRectify, onVoid, onEmail }) {
+function InvoiceDetail({ inv, onClose, onStatus, onRectify, onVoid, onEmail, onRemind }) {
   const closed = inv.status === 'Rectificada' || inv.status === 'Anulada';
   return (
     <Modal title={`Factura ${inv.number}`} onClose={onClose} onSubmit={onClose} submitLabel="Cerrar" hideCancel>
@@ -621,6 +637,11 @@ function InvoiceDetail({ inv, onClose, onStatus, onRectify, onVoid, onEmail }) {
             <button type="button" onClick={onEmail}>
               Enviar por email
             </button>
+            {inv.status !== 'Pagada' && (
+              <button type="button" onClick={onRemind}>
+                Recordar el pago
+              </button>
+            )}
             {PAYMENT_STATES.filter((s) => s !== inv.status).map((s) => (
               <button key={s} type="button" onClick={() => onStatus(s)}>
                 Marcar {s.toLowerCase()}

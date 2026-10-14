@@ -8,6 +8,7 @@ const TABS = [
   { id: 'invoicing', label: 'Facturación' },
   { id: 'brand', label: 'Marca' },
   { id: 'oncall', label: 'Agenda' },
+  { id: 'reminders', label: 'Recordatorios' },
   { id: 'emailTemplate', label: 'Email' },
   { id: 'privacy', label: 'Privacidad' },
   { id: 'catalogs', label: 'Listas' },
@@ -36,6 +37,7 @@ export default function Settings() {
     emailTemplate: config.emailTemplate,
     privacy: config.privacy,
     oncall: config.oncall,
+    reminders: config.reminders,
   });
   const [saved, setSaved] = useState('');
   const [error, setError] = useState('');
@@ -203,6 +205,72 @@ export default function Settings() {
             Por defecto, 3 semanas antes (desde la 37, que es cuando el embarazo es a término) y 2 después.
           </p>
           <SaveRow onSave={() => save('oncall')} saved={saved === 'oncall'} />
+        </div>
+      )}
+
+      {tab === 'reminders' && (
+        <div className="panel">
+          <p className="muted">
+            Nada se envía solo: el inicio avisa de lo que hay pendiente y tú decides. Aquí se define cuándo
+            algo cuenta como pendiente y qué dice el correo.
+          </p>
+          <div className="form-grid">
+            <Field label="Días de cortesía sin vencimiento">
+              <input
+                type="number"
+                min="0"
+                max="180"
+                value={draft.reminders.graceDays}
+                onChange={set('reminders', 'graceDays')}
+              />
+            </Field>
+            <Field label="Avisar de las citas con tantos días">
+              <input
+                type="number"
+                min="0"
+                max="30"
+                value={draft.reminders.appointmentDaysAhead}
+                onChange={set('reminders', 'appointmentDaysAhead')}
+              />
+            </Field>
+          </div>
+          <p className="muted small">
+            Una factura sin fecha de vencimiento se considera vencida pasados esos días desde su fecha. Sin
+            esto no vencería nunca y no aparecería en ningún aviso.
+          </p>
+
+          <h3 className="pending-title">Recordatorio de pago</h3>
+          <p className="muted small">
+            Marcadores: <code>{'{{clienta}}'}</code> <code>{'{{numero}}'}</code> <code>{'{{total}}'}</code>{' '}
+            <code>{'{{vencimiento}}'}</code> <code>{'{{negocio}}'}</code>
+          </p>
+          <Field label="Asunto">
+            <input value={draft.reminders.invoiceSubject} onChange={set('reminders', 'invoiceSubject')} />
+          </Field>
+          <Field label="Mensaje">
+            <textarea rows={5} value={draft.reminders.invoiceBody} onChange={set('reminders', 'invoiceBody')} />
+          </Field>
+
+          <h3 className="pending-title">Recordatorio de cita</h3>
+          <p className="muted small">
+            Marcadores: <code>{'{{clienta}}'}</code> <code>{'{{fecha}}'}</code> <code>{'{{hora}}'}</code>{' '}
+            <code>{'{{servicio}}'}</code> <code>{'{{modalidad}}'}</code> <code>{'{{negocio}}'}</code>
+          </p>
+          <Field label="Asunto">
+            <input
+              value={draft.reminders.appointmentSubject}
+              onChange={set('reminders', 'appointmentSubject')}
+            />
+          </Field>
+          <Field label="Mensaje">
+            <textarea
+              rows={5}
+              value={draft.reminders.appointmentBody}
+              onChange={set('reminders', 'appointmentBody')}
+            />
+          </Field>
+
+          <SaveRow onSave={() => save('reminders')} saved={saved === 'reminders'} />
         </div>
       )}
 

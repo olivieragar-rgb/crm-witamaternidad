@@ -10,6 +10,7 @@ import { catalogsRouter } from './catalogs.js';
 import { privacyRouter, auditRouter } from './privacy.js';
 import { onCallRouter } from './oncall.js';
 import { expensesRouter, taxesRouter } from './expenses.js';
+import { remindersRouter } from './reminders.js';
 import { securityHeaders, sameOrigin } from './security.js';
 import { attachUser, requireAuth, authRouter, usersRouter, audit } from './auth.js';
 
@@ -39,18 +40,14 @@ app.use('/api/users', usersRouter);
 app.use('/api', requireAuth);
 
 // Campos que se guardan como numero. Los que apuntan a otra tabla admiten
-// null (no hay clienta asignada); el resto son columnas NOT NULL, asi que un
-// campo que no venga vale cero, no null: poner null ahi reventaba la insercion
-// con un 500 en vez de aplicar el valor por defecto.
+// null, porque una cita puede no tener clienta asignada.
 const NUMERIC = new Set(['price', 'durationMin', 'active', 'clientId', 'serviceId', 'qty', 'vat']);
 const NULLABLE_REFS = new Set(['clientId', 'serviceId']);
-const MISSING_NUMERIC = { active: 1, durationMin: 60 };
 
 function normalize(field, value) {
   if (value === undefined || value === null || value === '') {
     if (!NUMERIC.has(field)) return '';
-    if (NULLABLE_REFS.has(field)) return null;
-    return MISSING_NUMERIC[field] ?? 0;
+    return NULLABLE_REFS.has(field) ? null : 0;
   }
   if (NUMERIC.has(field)) return Number(value) || 0;
   return String(value).trim();
@@ -88,11 +85,17 @@ function crud({ table, fields, required = [], searchText, orderBy = 'id DESC', b
           return res.status(400).json({ error: `El campo "${f}" es obligatorio` });
         }
       }
-      const vals = fields.map((f) => normalize(f, body[f]));
-      const info = await run(
-        `INSERT INTO ${table} (${fields.join(', ')}) VALUES (${fields.map(() => '?').join(', ')})`,
-        vals,
-      );
+      // Solo se insertan las columnas que vienen en la peticion. Las demas se
+      // omiten para que se aplique el DEFAULT de la tabla: pasar '' o null
+      // pisaba ese valor por defecto, y una cita creada sin estado se quedaba
+      // sin estado en vez de quedar "Programada".
+      const present = fields.filter((f) => body[f] !== undefined && body[f] !== null && body[f] !== '');
+      const info = present.length
+        ? await run(
+            `INSERT INTO ${table} (${present.join(', ')}) VALUES (${present.map(() => '?').join(', ')})`,
+            present.map((f) => normalize(f, body[f])),
+          )
+        : await run(`INSERT INTO ${table} DEFAULT VALUES`);
       await audit(req, { action: 'create', entity: table, entityId: info.lastInsertRowid });
       res.status(201).json(await get(`SELECT * FROM ${table} WHERE id = ?`, [info.lastInsertRowid]));
     } catch (e) {
@@ -148,6 +151,7 @@ app.use('/api/audit', auditRouter);
 app.use('/api/oncall', onCallRouter);
 app.use('/api/expenses', expensesRouter);
 app.use('/api/taxes', taxesRouter);
+app.use('/api/reminders', remindersRouter);
 
 // Con datos de categoria especial hay que poder demostrar quien vio que, no
 // solo quien cambio que.
@@ -381,11 +385,25 @@ app.get('/api/dashboard', async (req, res, next) => {
     ).n;
     const draftInvoices = (await get("SELECT COUNT(*) AS n FROM invoices WHERE status = 'Borrador'")).n;
 
+    // Facturas que ya han pasado de su vencimiento. Sin vencimiento explicito
+    // se usa la fecha de factura mas los dias de cortesia configurados.
+    const { graceDays } = await getSetting('reminders');
+    const overdueInvoices = (
+      await get(
+        `SELECT COUNT(*) AS n FROM invoices
+         WHERE status IN ('Emitida', 'Enviada')
+           AND CASE WHEN dueDate <> '' THEN dueDate
+                    ELSE date(date, '+' || ? || ' days') END < date('now')`,
+        [Number(graceDays) || 0],
+      )
+    ).n;
+
     res.json({
       activeClients,
       newClients,
       pendingInvoices,
       draftInvoices,
+      overdueInvoices,
       monthRevenue: Math.round(Number(revenue.total) * 100) / 100,
       upcomingBirths,
       upcomingAppointments,

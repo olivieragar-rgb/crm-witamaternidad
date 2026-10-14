@@ -209,6 +209,10 @@ const COLUMNS = [
   ['clients', 'consentChannel', "TEXT NOT NULL DEFAULT ''"],
   ['clients', 'consentVersion', "TEXT NOT NULL DEFAULT ''"],
   ['clients', 'anonymizedAt', "TEXT NOT NULL DEFAULT ''"],
+
+  // Fecha del ultimo recordatorio enviado, para no repetirlo sin querer.
+  ['invoices', 'remindedAt', "TEXT NOT NULL DEFAULT ''"],
+  ['appointments', 'remindedAt', "TEXT NOT NULL DEFAULT ''"],
 ];
 
 const INDEXES = `

@@ -1,12 +1,19 @@
 import { useEffect, useState } from 'react';
 import { api, eur, fmtDate, gestWeeks } from '../api.js';
 import FppCalculator from '../components/FppCalculator.jsx';
+import ReminderModal from '../components/ReminderModal.jsx';
 
 export default function Dashboard({ go }) {
   const [data, setData] = useState(null);
+  const [pending, setPending] = useState(null);
+  const [reminder, setReminder] = useState(null); // { kind, id }
 
-  useEffect(() => {
+  const load = () => {
     api.dashboard().then(setData);
+    api.reminders().then(setPending);
+  };
+  useEffect(() => {
+    load();
   }, []);
 
   if (!data) return <p className="muted">Cargando…</p>;
@@ -30,11 +37,83 @@ export default function Dashboard({ go }) {
           <span className="stat-num">{data.pendingInvoices}</span>
           <span className="stat-label">Facturas pendientes</span>
         </button>
+        {data.overdueInvoices > 0 && (
+          <button className="stat warn" onClick={() => go('invoices', { status: 'pendientes' })}>
+            <span className="stat-num">{data.overdueInvoices}</span>
+            <span className="stat-label">Facturas vencidas</span>
+          </button>
+        )}
         <button className="stat accent" onClick={() => go('invoices', { status: 'Pagada' })}>
           <span className="stat-num">{eur(data.monthRevenue)}</span>
           <span className="stat-label">Ingresos del mes</span>
         </button>
       </div>
+
+      {pending && (pending.overdue.length > 0 || pending.appointments.length > 0) && (
+        <div className="panel pending-panel">
+          <div className="panel-head">
+            <h2>Pendiente de avisar</h2>
+          </div>
+          <p className="muted small">
+            Nada se envía solo. Aquí decides tú, y antes de mandarlo puedes leer el texto.
+          </p>
+
+          {pending.overdue.length > 0 && (
+            <>
+              <h3 className="pending-title">Facturas vencidas</h3>
+              <ul className="pending-list">
+                {pending.overdue.map((o) => (
+                  <li key={'i' + o.id}>
+                    <span>
+                      <strong>{o.number}</strong> · {o.clientName || '—'} · {eur(o.total)}
+                      <span className="muted">
+                        {' '}
+                        vencida hace {o.daysLate} {o.daysLate === 1 ? 'día' : 'días'}
+                        {o.remindedAt && ` · recordada el ${fmtDate(o.remindedAt)}`}
+                      </span>
+                    </span>
+                    <button
+                      disabled={!o.clientEmail}
+                      title={o.clientEmail ? '' : 'La clienta no tiene email en su ficha'}
+                      onClick={() => setReminder({ kind: 'invoice', id: o.id })}
+                    >
+                      Recordar
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          {pending.appointments.length > 0 && (
+            <>
+              <h3 className="pending-title">Citas próximas</h3>
+              <ul className="pending-list">
+                {pending.appointments.map((c) => (
+                  <li key={'a' + c.id}>
+                    <span>
+                      <strong>{c.clientName || '—'}</strong>
+                      {c.serviceName ? ` · ${c.serviceName}` : ''}
+                      <span className="muted">
+                        {' '}
+                        {fmtDate(c.date)}
+                        {c.remindedAt && ` · recordada el ${fmtDate(c.remindedAt)}`}
+                      </span>
+                    </span>
+                    <button
+                      disabled={!c.clientEmail}
+                      title={c.clientEmail ? '' : 'La clienta no tiene email en su ficha'}
+                      onClick={() => setReminder({ kind: 'appointment', id: c.id })}
+                    >
+                      Recordar
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
+      )}
 
       <div className="panels">
         <FppCalculator />
@@ -84,6 +163,18 @@ export default function Dashboard({ go }) {
           </ul>
         </div>
       </div>
+      {reminder && (
+        <ReminderModal
+          kind={reminder.kind}
+          id={reminder.id}
+          onClose={() => setReminder(null)}
+          onSent={(to) => {
+            setReminder(null);
+            load();
+            alert(`Recordatorio enviado a ${to}`);
+          }}
+        />
+      )}
     </section>
   );
 }

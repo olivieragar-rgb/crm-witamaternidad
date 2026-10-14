@@ -30,6 +30,25 @@ export const DEFAULTS = {
   },
   // Semanas de disponibilidad permanente alrededor de la FPP. Por defecto,
   // desde la semana 37 (termino) hasta dos despues de la fecha prevista.
+  reminders: {
+    // Dias de cortesia despues de la fecha de factura cuando no hay
+    // vencimiento explicito: sin esto, una factura sin vencimiento no
+    // venceria nunca y no aparecria en ningun aviso.
+    graceDays: 15,
+    appointmentDaysAhead: 2,
+    invoiceSubject: 'Recordatorio de la factura {{numero}}',
+    invoiceBody:
+      'Hola {{clienta}},\n' +
+      'Te recordamos que la factura {{numero}}, de {{total}}, vencio el {{vencimiento}}.\n' +
+      'Si ya la has pagado, no hagas caso de este mensaje y disculpa las molestias.\n' +
+      'Un abrazo.',
+    appointmentSubject: 'Tu cita del {{fecha}}',
+    appointmentBody:
+      'Hola {{clienta}},\n' +
+      'Te recordamos tu cita de {{servicio}} el {{fecha}} a las {{hora}} ({{modalidad}}).\n' +
+      'Si no te viene bien, avisanos y la cambiamos.\n' +
+      'Nos vemos.',
+  },
   oncall: {
     weeksBefore: 3,
     weeksAfter: 2,
