@@ -136,11 +136,10 @@ function Shell({ session, route, go, menuOpen, setMenuOpen, pwOpen, setPwOpen, l
     <div className="shell">
       <aside className="sidebar">
         <button className="brand" onClick={() => go('dashboard')} title="Ir al inicio">
-          <img src="/logo.webp" alt="" className="brand-logo" />
-          <span className="brand-text">
-            <span className="brand-name">{brand.name}</span>
-            <span className="brand-sub">{brand.tagline}</span>
-          </span>
+          {/* Solo el simbolo del logo: la palabra que trae el fichero la pone
+              ahora el texto de debajo. */}
+          <span className="brand-logo" aria-hidden="true" />
+          <span className="brand-name">{brand.name}</span>
         </button>
 
         <nav>

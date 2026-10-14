@@ -39,7 +39,7 @@ test('guardar ajustes solo cambia las claves conocidas', async () => {
   const res = await a.put('/api/settings/brand', { name: 'Otro Negocio', colado: 'no' });
   assert.equal(res.data.name, 'Otro Negocio');
   assert.equal(res.data.colado, undefined);
-  assert.equal(res.data.tagline, 'Hipnoparto · Lactancia', 'lo que no se toca se conserva');
+  assert.equal(res.data.sidebarFooter, 'WawaywawO', 'lo que no se toca se conserva');
 
   // Y persiste.
   assert.equal((await a.get('/api/settings')).data.brand.name, 'Otro Negocio');

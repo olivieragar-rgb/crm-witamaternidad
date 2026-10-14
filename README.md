@@ -95,6 +95,32 @@ Desactivar una opcion de una lista la quita de los formularios nuevos pero no
 toca las fichas que ya la usaban, y renombrarla tampoco reescribe lo ya
 guardado: cambiar la lista de opciones no deberia reescribir el pasado.
 
+## Agenda de guardia
+
+Alrededor de la fecha probable de parto hay unas semanas de disponibilidad
+permanente, configurables en Ajustes (por defecto 3 antes y 2 despues). El
+calendario pinta esa franja para cada clienta, en verde con una guardia y en
+terracota cuando hay dos a la vez, y el formulario de clienta avisa del choque
+mientras se escribe la FPP, que es cuando sirve de algo. Avisa, no bloquea.
+
+## Gastos e impuestos
+
+Los gastos se registran con base, IVA, categoria y si son deducibles. La vista
+Gastos resume el trimestre con las cifras del **modelo 303** (IVA repercutido
+menos soportado deducible) y del **130** (rendimiento, el 20%, menos las
+retenciones ya practicadas en factura).
+
+Las facturas cuentan por fecha de factura, no de cobro, que es el criterio de
+devengo del IVA. Anuladas, rectificadas y borradores quedan fuera. **No
+presenta nada ante Hacienda**: da los numeros para rellenar el modelo o
+pasarselos a la gestoria.
+
+## Recordatorios
+
+El inicio lista las facturas pasadas de vencimiento y las citas proximas.
+Nada se envia solo: se puede leer el texto antes de mandarlo y hay que
+confirmar cada envio. Las plantillas se editan en Ajustes.
+
 ## Proteccion de datos
 
 El CRM guarda datos de embarazo, lactancia y notas de seguimiento: **datos de
@@ -140,6 +166,9 @@ server/invoices.js   Facturacion: borrador, emision, rectificativas
 server/invoice-pdf.js  PDF de factura
 server/settings.js   Ajustes del negocio (datos fiscales, facturacion, marca)
 server/catalogs.js   Listas desplegables editables
+server/oncall.js     Ventanas de guardia alrededor de la FPP
+server/expenses.js   Gastos y resumen del 303 y el 130
+server/reminders.js  Recordatorios de cobro y de cita
 server/privacy.js    Derechos de la clienta, conservacion y registro de accesos
 src/config.jsx       Ajustes y catalogos cargados una vez para toda la app
 docs/rgpd/           RAT, encargados, protocolo de brecha, politica

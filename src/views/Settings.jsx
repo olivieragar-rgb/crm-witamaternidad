@@ -161,9 +161,6 @@ export default function Settings() {
             <Field label="Nombre">
               <input value={draft.brand.name} onChange={set('brand', 'name')} />
             </Field>
-            <Field label="Subtítulo">
-              <input value={draft.brand.tagline} onChange={set('brand', 'tagline')} />
-            </Field>
             <Field label="Pie de la barra lateral">
               <input value={draft.brand.sidebarFooter} onChange={set('brand', 'sidebarFooter')} />
             </Field>

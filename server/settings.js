@@ -20,7 +20,6 @@ export const DEFAULTS = {
   },
   brand: {
     name: 'Witamaternidad',
-    tagline: 'Hipnoparto · Lactancia',
     sidebarFooter: 'WawaywawO',
   },
   emailTemplate: {
