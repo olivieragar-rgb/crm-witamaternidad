@@ -146,13 +146,14 @@ body {
   background: rgba(255, 255, 255, 0.07);
 }
 
-/* El logo, entero y tal cual viene el fichero. */
+/* El logo es cuadrado y su dibujo va dentro de un circulo con margen de
+   sobra, asi que el recorte redondo solo quita las esquinas de fondo. */
 .brand-logo {
-  width: 100%;
-  max-width: 186px;
-  height: auto;
+  width: 132px;
+  height: 132px;
   display: block;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-full);
+  object-fit: cover;
 }
 
 .brand-name {
@@ -1058,7 +1059,8 @@ td.empty {
     gap: 10px;
   }
   .brand-logo {
-    max-width: 104px;
+    width: 52px;
+    height: 52px;
   }
   .brand-name {
     font-size: 18px;
@@ -1119,9 +1121,10 @@ td.empty {
 }
 
 .login-logo {
-  width: 54px;
-  height: 54px;
-  object-fit: contain;
+  width: 92px;
+  height: 92px;
+  object-fit: cover;
+  border-radius: var(--radius-full);
   align-self: center;
 }
 

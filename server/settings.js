@@ -19,7 +19,7 @@ export const DEFAULTS = {
     phone: '',
   },
   brand: {
-    name: 'Witamaternidad',
+    name: 'Wita',
     sidebarFooter: 'WawaywawO',
   },
   emailTemplate: {

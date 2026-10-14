@@ -31,7 +31,7 @@ test('los ajustes arrancan con los valores de fabrica', async () => {
   assert.equal(s.issuer.country, 'España');
   assert.equal(s.invoicing.rectifySeries, 'R');
   assert.match(s.invoicing.exemptionNote, /20\.Uno\.3/, 'trae la nota de exencion sanitaria');
-  assert.equal(s.brand.name, 'Witamaternidad');
+  assert.equal(s.brand.name, 'Wita');
   assert.match(s.emailTemplate.subject, /\{\{numero\}\}/);
 });
 
@@ -43,7 +43,7 @@ test('guardar ajustes solo cambia las claves conocidas', async () => {
 
   // Y persiste.
   assert.equal((await a.get('/api/settings')).data.brand.name, 'Otro Negocio');
-  await a.put('/api/settings/brand', { name: 'Witamaternidad' });
+  await a.put('/api/settings/brand', { name: 'Wita' });
 });
 
 // ---- catálogos ------------------------------------------------------------
