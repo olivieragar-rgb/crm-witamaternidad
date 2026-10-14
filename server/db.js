@@ -192,6 +192,12 @@ const COLUMNS = [
   ['invoices', 'hashPrev', "TEXT NOT NULL DEFAULT ''"],
 
   ['invoice_items', 'discount', 'REAL NOT NULL DEFAULT 0'],
+
+  // RGPD: constancia del consentimiento y marca de ficha anonimizada.
+  ['clients', 'consentAt', "TEXT NOT NULL DEFAULT ''"],
+  ['clients', 'consentChannel', "TEXT NOT NULL DEFAULT ''"],
+  ['clients', 'consentVersion', "TEXT NOT NULL DEFAULT ''"],
+  ['clients', 'anonymizedAt', "TEXT NOT NULL DEFAULT ''"],
 ];
 
 const INDEXES = `
@@ -232,6 +238,26 @@ async function migrate() {
   // La primera version de la columna se creo con el pais sin tilde.
   await run("UPDATE clients SET country = 'España' WHERE country = 'Espana'");
   await backfillInvoiceSeries();
+  await backfillInvoiceSnapshots();
+}
+
+// Las facturas emitidas antes de que existiera la copia de datos fiscales
+// reconstruian esos datos leyendo la ficha de la clienta. Eso tiene dos
+// problemas: la factura cambiaba si se corregia la ficha, y anonimizar a la
+// clienta le borraba el nombre y el NIF. Se les rellena la copia con lo que
+// dice la ficha ahora, que es la mejor reconstruccion posible.
+async function backfillInvoiceSnapshots() {
+  const pending = await all(
+    "SELECT id, clientId FROM invoices WHERE clientSnapshot = '' AND seq IS NOT NULL AND clientId IS NOT NULL",
+  );
+  for (const inv of pending) {
+    const client = await get(
+      'SELECT name, taxId, address, postalCode, city, province, country, email FROM clients WHERE id = ?',
+      [inv.clientId],
+    );
+    if (!client) continue;
+    await run('UPDATE invoices SET clientSnapshot = ? WHERE id = ?', [JSON.stringify(client), inv.id]);
+  }
 }
 
 // Las facturas anteriores a la serie y el correlativo traian el numero en un

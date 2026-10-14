@@ -71,6 +71,17 @@ export const api = {
   settings: () => req('GET', '/api/settings'),
   saveSettings: (key, body) => req('PUT', `/api/settings/${key}`, body),
 
+  // Privacidad
+  exportClientUrl: (id) => `/api/clients/${id}/export`,
+  anonymize: (id, body) => req('POST', `/api/clients/${id}/anonymize`, body),
+  retention: () => req('GET', '/api/clients/retention'),
+  audit: (params = {}) => {
+    const qs = new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v !== '' && v !== undefined && v !== null),
+    ).toString();
+    return req('GET', `/api/audit${qs ? `?${qs}` : ''}`);
+  },
+
   catalogs: () => req('GET', '/api/catalogs'),
   addCatalog: (body) => req('POST', '/api/catalogs', body),
   updateCatalog: (id, body) => req('PUT', `/api/catalogs/${id}`, body),

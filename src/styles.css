@@ -1438,3 +1438,12 @@ a.btn:hover {
   border-radius: 4px;
   font-size: 12px;
 }
+
+.consent {
+  border-color: var(--green);
+  background: var(--green-light);
+}
+
+.consent summary {
+  color: var(--green-dark);
+}

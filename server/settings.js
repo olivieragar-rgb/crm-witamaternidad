@@ -28,6 +28,15 @@ export const DEFAULTS = {
     greeting: 'Hola {{clienta}}, adjuntamos tu factura {{numero}} ({{fecha}}).',
     signature: '',
   },
+  privacy: {
+    retentionYears: 5,
+    consentVersion: '1',
+    consentText:
+      'Autorizo a que se traten mis datos, incluidos los de salud relacionados con el embarazo y la ' +
+      'lactancia, con la única finalidad de prestarme el servicio contratado y cumplir las obligaciones ' +
+      'legales y fiscales derivadas. Puedo acceder a ellos, rectificarlos, oponerme a su tratamiento o ' +
+      'pedir su supresión escribiendo al responsable.',
+  },
   invoicing: {
     series: '', // serie de las facturas ordinarias; vacía = solo año y correlativo
     rectifySeries: 'R', // serie de las rectificativas

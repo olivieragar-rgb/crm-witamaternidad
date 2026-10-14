@@ -9,6 +9,7 @@ import Calendar from './views/Calendar.jsx';
 import Login from './views/Login.jsx';
 import Users from './views/Users.jsx';
 import Settings from './views/Settings.jsx';
+import Privacy from './views/Privacy.jsx';
 import PasswordModal from './components/PasswordModal.jsx';
 import { ConfigProvider, useConfig } from './config.jsx';
 
@@ -20,6 +21,7 @@ const NAV = [
   { id: 'services', label: 'Servicios', icon: '✦' },
   { id: 'invoices', label: 'Facturas', icon: '€' },
   { id: 'users', label: 'Usuarios', icon: '⚇', adminOnly: true },
+  { id: 'privacy', label: 'Privacidad', icon: '⛉', adminOnly: true },
   { id: 'settings', label: 'Ajustes', icon: '⚙', adminOnly: true },
 ];
 
@@ -185,6 +187,7 @@ function Shell({ session, route, go, menuOpen, setMenuOpen, pwOpen, setPwOpen, l
         {route.view === 'services' && <Services />}
         {route.view === 'invoices' && <Invoices initialFilter={route.filter} />}
         {route.view === 'users' && session.role === 'admin' && <Users me={session} />}
+        {route.view === 'privacy' && session.role === 'admin' && <Privacy />}
         {route.view === 'settings' && session.role === 'admin' && <Settings />}
       </main>
 

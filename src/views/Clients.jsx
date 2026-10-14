@@ -8,6 +8,7 @@ const EMPTY = {
   name: '', email: '', phone: '', service: '', mode: '', dueDate: '',
   status: 'Nuevo contacto', notes: '',
   taxId: '', address: '', postalCode: '', city: '', province: '', country: 'España',
+  consentAt: '', consentChannel: '', consentVersion: '',
 };
 const FISCAL = ['taxId', 'address', 'postalCode', 'city', 'province', 'country'];
 
@@ -50,8 +51,13 @@ export default function Clients({ initialFilter }) {
   }
   async function save() {
     try {
-      if (editingId) await api.update('clients', editingId, form);
-      else await api.create('clients', form);
+      // Se guarda la version del texto vigente al aceptarlo: si el texto
+      // cambia despues, hay que poder saber cual acepto cada clienta.
+      const body = form.consentAt
+        ? { ...form, consentVersion: form.consentVersion || config.privacy.consentVersion }
+        : form;
+      if (editingId) await api.update('clients', editingId, body);
+      else await api.create('clients', body);
       setOpen(false);
       load();
     } catch (e) {
@@ -65,6 +71,30 @@ export default function Clients({ initialFilter }) {
       load();
     } catch (e) {
       // El servidor se niega si tiene facturas: hay que conservarlas.
+      alert(e.message);
+    }
+  }
+
+  // Derecho de supresión. Se ejerce cuando la clienta lo pide, no solo cuando
+  // vence el plazo de conservación, así que tiene que estar aquí y no solo en
+  // la vista de Privacidad.
+  async function anonymize(c) {
+    if (
+      !confirm(
+        `Anonimizar la ficha de ${c.name}.\n\n` +
+          'Se borran nombre, contacto, FPP y notas, y también las notas de sus citas.\n' +
+          'Sus facturas se conservan intactas: la ley obliga a guardarlas.\n\n' +
+          'Esto no se puede deshacer. ¿Seguir?',
+      )
+    ) {
+      return;
+    }
+    const reason = prompt('Motivo (queda en el registro):', 'La clienta ejerce su derecho de supresión');
+    if (reason === null) return;
+    try {
+      await api.anonymize(c.id, { reason });
+      load();
+    } catch (e) {
       alert(e.message);
     }
   }
@@ -86,10 +116,12 @@ export default function Clients({ initialFilter }) {
         </thead>
         <tbody>
           {visible.map((c) => (
-            <tr key={c.id}>
+            <tr key={c.id} className={c.anonymizedAt ? 'inactive-row' : ''}>
               <td>
                 <strong>{c.name}</strong>
-                <div className="muted">{c.email || c.phone}</div>
+                <div className="muted">
+                  {c.anonymizedAt ? `Anonimizada el ${fmtDate(c.anonymizedAt)}` : c.email || c.phone}
+                </div>
               </td>
               <td>{c.service}</td>
               <td className="muted">{c.mode}</td>
@@ -111,10 +143,28 @@ export default function Clients({ initialFilter }) {
                 <Badge value={c.status} />
               </td>
               <td className="row-actions">
+                <a className="btn" href={api.exportClientUrl(c.id)} target="_blank" rel="noreferrer"
+                   title="Descargar todo lo que guardamos de ella (derecho de acceso)">
+                  Datos
+                </a>
                 <button onClick={() => edit(c)}>Editar</button>
-                <button className="danger" onClick={() => remove(c.id)}>
-                  Borrar
-                </button>
+                {c.anonymizedAt ? (
+                  <button className="danger" disabled>
+                    Anonimizada
+                  </button>
+                ) : (
+                  <>
+                    {/* Anonimizar es el derecho de supresión: conserva las
+                        facturas. Borrar solo funciona si no tiene ninguna, y
+                        es para una ficha creada por error. */}
+                    <button className="danger" onClick={() => anonymize(c)} title="Borrar sus datos personales conservando las facturas (derecho de supresión)">
+                      Anonimizar
+                    </button>
+                    <button className="danger" onClick={() => remove(c.id)} title="Solo si no tiene facturas">
+                      Borrar
+                    </button>
+                  </>
+                )}
               </td>
             </tr>
           ))}
@@ -166,6 +216,27 @@ export default function Clients({ initialFilter }) {
               </select>
             </Field>
           </div>
+          <details className="fiscal consent" open={!form.consentAt}>
+            <summary>Consentimiento (RGPD)</summary>
+            <p className="muted small">
+              Aquí hay datos de salud. Antes de guardarlos hace falta que la clienta lo haya autorizado, y
+              hay que poder demostrar cuándo y cómo. El texto que se acepta está en Ajustes · Privacidad.
+            </p>
+            <div className="form-grid">
+              <Field label="Fecha del consentimiento">
+                <input type="date" value={form.consentAt} onChange={set('consentAt')} />
+              </Field>
+              <Field label="Cómo lo dio">
+                <select value={form.consentChannel} onChange={set('consentChannel')}>
+                  <option value="">—</option>
+                  {options(config.catalogs.consentChannel, form.consentChannel).map((m) => (
+                    <option key={m}>{m}</option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+          </details>
+
           <details className="fiscal" open={FISCAL.some((f) => form[f] && form[f] !== 'España')}>
             <summary>Datos fiscales (para poder facturarle)</summary>
             <div className="form-grid">

@@ -14,6 +14,10 @@ export const TYPES = {
   mode: { label: 'Modalidades', defaults: ['Presencial (Granada)', 'Online'] },
   clientStatus: { label: 'Estados de clienta', defaults: ['Nuevo contacto', 'Activa', 'Finalizada'] },
   appointmentStatus: { label: 'Estados de cita', defaults: ['Programada', 'Realizada', 'Cancelada'] },
+  consentChannel: {
+    label: 'Canales de consentimiento',
+    defaults: ['Presencial', 'Email', 'Formulario web', 'Papel firmado'],
+  },
   paymentMethod: {
     label: 'Formas de pago',
     defaults: ['Transferencia', 'Bizum', 'Efectivo', 'Tarjeta'],

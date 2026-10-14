@@ -117,6 +117,16 @@ test('renombrar una opcion tampoco reescribe el pasado', async () => {
   await a.put(`/api/catalogs/${opt.id}`, { value: 'Activa' });
 });
 
+test('un campo numerico que no viene usa su valor por defecto, no null', async () => {
+  // La columna es NOT NULL: meter null ahi devolvia un 500 en vez de aplicar
+  // el valor por defecto.
+  const res = await a.post('/api/services', { name: 'Solo nombre' });
+  assert.equal(res.status, 201);
+  assert.equal(res.data.price, 0);
+  assert.equal(res.data.durationMin, 60);
+  assert.equal(res.data.active, 1);
+});
+
 test('la siembra no duplica al reiniciar', async () => {
   const { seedCatalogs } = await import('./catalogs.js');
   const antes = (await a.get('/api/catalogs')).data.values.mode.length;

@@ -7,6 +7,7 @@ import { invoicePdf } from './invoice-pdf.js';
 import { invoicesRouter, invoiceWithItems, lineAmount } from './invoices.js';
 import { settingsRouter, getSetting } from './settings.js';
 import { catalogsRouter } from './catalogs.js';
+import { privacyRouter, auditRouter } from './privacy.js';
 import { securityHeaders, sameOrigin } from './security.js';
 import { attachUser, requireAuth, authRouter, usersRouter, audit } from './auth.js';
 
@@ -35,12 +36,21 @@ app.use('/api', authRouter);
 app.use('/api/users', usersRouter);
 app.use('/api', requireAuth);
 
+// Campos que se guardan como numero. Los que apuntan a otra tabla admiten
+// null (no hay clienta asignada); el resto son columnas NOT NULL, asi que un
+// campo que no venga vale cero, no null: poner null ahi reventaba la insercion
+// con un 500 en vez de aplicar el valor por defecto.
 const NUMERIC = new Set(['price', 'durationMin', 'active', 'clientId', 'serviceId', 'qty', 'vat']);
+const NULLABLE_REFS = new Set(['clientId', 'serviceId']);
+const MISSING_NUMERIC = { active: 1, durationMin: 60 };
+
 function normalize(field, value) {
   if (value === undefined || value === null || value === '') {
-    return NUMERIC.has(field) ? (field === 'active' ? 1 : null) : '';
+    if (!NUMERIC.has(field)) return '';
+    if (NULLABLE_REFS.has(field)) return null;
+    return MISSING_NUMERIC[field] ?? 0;
   }
-  if (NUMERIC.has(field)) return Number(value);
+  if (NUMERIC.has(field)) return Number(value) || 0;
   return String(value).trim();
 }
 // ---- generic CRUD --------------------------------------------------------
@@ -129,6 +139,22 @@ function crud({ table, fields, required = [], searchText, orderBy = 'id DESC', b
 
 // ---- clients / services --------------------------------------------------
 
+// Antes del crud generico: si no, /api/clients/retention entraria por
+// /api/clients/:id y "retention" se leeria como un identificador.
+app.use('/api/clients', privacyRouter);
+app.use('/api/audit', auditRouter);
+
+// Con datos de categoria especial hay que poder demostrar quien vio que, no
+// solo quien cambio que.
+app.use('/api/clients', async (req, res, next) => {
+  if (req.method !== 'GET') return next();
+  const id = req.path.slice(1);
+  await audit(req, /^\d+$/.test(id)
+    ? { action: 'client_view', entity: 'clients', entityId: id }
+    : { action: 'client_list', entity: 'clients' });
+  next();
+});
+
 app.use(
   '/api/clients',
   crud({
@@ -136,6 +162,7 @@ app.use(
     fields: [
       'name', 'email', 'phone', 'service', 'mode', 'dueDate', 'status', 'notes',
       'taxId', 'address', 'postalCode', 'city', 'province', 'country',
+      'consentAt', 'consentChannel', 'consentVersion',
     ],
     required: ['name'],
     orderBy: 'name',

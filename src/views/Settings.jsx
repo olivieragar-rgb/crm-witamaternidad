@@ -8,6 +8,7 @@ const TABS = [
   { id: 'invoicing', label: 'Facturación' },
   { id: 'brand', label: 'Marca' },
   { id: 'emailTemplate', label: 'Email' },
+  { id: 'privacy', label: 'Privacidad' },
   { id: 'catalogs', label: 'Listas' },
 ];
 
@@ -32,6 +33,7 @@ export default function Settings() {
     invoicing: config.invoicing,
     brand: config.brand,
     emailTemplate: config.emailTemplate,
+    privacy: config.privacy,
   });
   const [saved, setSaved] = useState('');
   const [error, setError] = useState('');
@@ -190,6 +192,38 @@ export default function Settings() {
             El detalle de las líneas y el total se añaden solos; aquí solo se escribe el texto que los rodea.
           </p>
           <SaveRow onSave={() => save('emailTemplate')} saved={saved === 'emailTemplate'} />
+        </div>
+      )}
+
+      {tab === 'privacy' && (
+        <div className="panel">
+          <p className="muted">
+            Los datos de embarazo, lactancia y las notas son datos de salud: categoría especial del Art. 9
+            del RGPD. El texto de consentimiento se guarda con versión, para poder demostrar qué aceptó cada
+            clienta y cuándo.
+          </p>
+          <div className="form-grid">
+            <Field label="Años de conservación">
+              <input
+                type="number"
+                min="1"
+                max="30"
+                value={draft.privacy.retentionYears}
+                onChange={set('privacy', 'retentionYears')}
+              />
+            </Field>
+            <Field label="Versión del texto de consentimiento">
+              <input value={draft.privacy.consentVersion} onChange={set('privacy', 'consentVersion')} />
+            </Field>
+          </div>
+          <Field label="Texto de consentimiento">
+            <textarea rows={6} value={draft.privacy.consentText} onChange={set('privacy', 'consentText')} />
+          </Field>
+          <p className="muted small">
+            Si cambias el texto, sube también la versión: las fichas guardan la versión que aceptaron, y sin
+            subirla no se podría distinguir quién aceptó qué.
+          </p>
+          <SaveRow onSave={() => save('privacy')} saved={saved === 'privacy'} />
         </div>
       )}
 

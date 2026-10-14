@@ -95,6 +95,31 @@ Desactivar una opcion de una lista la quita de los formularios nuevos pero no
 toca las fichas que ya la usaban, y renombrarla tampoco reescribe lo ya
 guardado: cambiar la lista de opciones no deberia reescribir el pasado.
 
+## Proteccion de datos
+
+El CRM guarda datos de embarazo, lactancia y notas de seguimiento: **datos de
+salud, categoria especial del Art. 9 del RGPD**. Lo que hace el sistema:
+
+- La ficha de clienta recoge el **consentimiento** con fecha, canal y version
+  del texto aceptado. El texto se edita en Ajustes · Privacidad.
+- **Derecho de acceso y portabilidad**: el boton "Datos" descarga todo lo que
+  el sistema guarda de esa clienta, con sus citas y sus facturas.
+- **Derecho de supresion**: "Anonimizar" vacia nombre, contacto, FPP, notas y
+  datos fiscales de la ficha, y tambien las notas de sus citas. Las facturas
+  se conservan, porque la ley obliga: cada una guarda su propia copia de los
+  datos fiscales, asi que sigue siendo valida con la ficha ya vaciada.
+- **Registro de accesos** (Privacidad · Registro): quien entro, que ficha
+  consulto y que cambio. Con datos de categoria especial hay que poder
+  demostrar quien vio que, no solo quien cambio que.
+- **Conservacion**: Privacidad · Conservacion lista las fichas sin actividad
+  por encima del plazo configurado y propone anonimizarlas. Nunca se borra
+  nada de forma automatica.
+
+En `docs/rgpd/` estan el registro de actividades de tratamiento, los
+encargados de tratamiento, el protocolo de brecha y el borrador de politica de
+privacidad. **Los cuatro tienen apartados pendientes** marcados entre
+corchetes que hay que completar y revisar con una asesoria.
+
 ## Estructura
 
 ```
@@ -107,7 +132,9 @@ server/invoices.js   Facturacion: borrador, emision, rectificativas
 server/invoice-pdf.js  PDF de factura
 server/settings.js   Ajustes del negocio (datos fiscales, facturacion, marca)
 server/catalogs.js   Listas desplegables editables
+server/privacy.js    Derechos de la clienta, conservacion y registro de accesos
 src/config.jsx       Ajustes y catalogos cargados una vez para toda la app
+docs/rgpd/           RAT, encargados, protocolo de brecha, politica
 server/db.js         Capa de datos (node:sqlite en local, Turso en produccion)
 server/index.js      Punto de entrada local
 src/                 Frontend React (vistas por modulo)
