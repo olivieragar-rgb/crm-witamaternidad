@@ -3,9 +3,15 @@ import { all, get, run, ready } from './db.js';
 import { searchItems } from '../src/search.js';
 import { sendMail, mailerConfigured } from './mailer.js';
 import { invoiceXlsxBase64 } from './invoice-xlsx.js';
+import { securityHeaders, sameOrigin } from './security.js';
+import { attachUser, requireAuth, authRouter, usersRouter, audit } from './auth.js';
 
 const app = express();
-app.use(express.json());
+// Detras del proxy de Vercel: para que req.ip y req.secure sean los reales.
+app.set('trust proxy', 1);
+app.disable('x-powered-by');
+app.use(securityHeaders);
+app.use(express.json({ limit: '64kb' }));
 
 // Make sure the schema + seed exist before any request (important on serverless cold starts).
 app.use(async (req, res, next) => {
@@ -16,6 +22,14 @@ app.use(async (req, res, next) => {
     next(e);
   }
 });
+
+// Orden importante: comprobar el origen, resolver la sesion, publicar las
+// rutas de acceso, y solo despues exigir sesion para todo lo demas.
+app.use(sameOrigin);
+app.use(attachUser);
+app.use('/api', authRouter);
+app.use('/api/users', usersRouter);
+app.use('/api', requireAuth);
 
 const NUMERIC = new Set(['price', 'durationMin', 'active', 'clientId', 'serviceId', 'qty', 'vat']);
 function normalize(field, value) {
@@ -76,6 +90,7 @@ function crud({ table, fields, required = [], searchText, orderBy = 'id DESC' })
         `INSERT INTO ${table} (${fields.join(', ')}) VALUES (${fields.map(() => '?').join(', ')})`,
         vals,
       );
+      await audit(req, { action: 'create', entity: table, entityId: info.lastInsertRowid });
       res.status(201).json(await get(`SELECT * FROM ${table} WHERE id = ?`, [info.lastInsertRowid]));
     } catch (e) {
       next(e);
@@ -95,6 +110,7 @@ function crud({ table, fields, required = [], searchText, orderBy = 'id DESC' })
       }
       const vals = fields.map((f) => (body[f] === undefined ? existing[f] : normalize(f, body[f])));
       await run(`UPDATE ${table} SET ${fields.map((f) => `${f} = ?`).join(', ')} WHERE id = ?`, [...vals, id]);
+      await audit(req, { action: 'update', entity: table, entityId: id });
       res.json(await get(`SELECT * FROM ${table} WHERE id = ?`, [id]));
     } catch (e) {
       next(e);
@@ -105,6 +121,7 @@ function crud({ table, fields, required = [], searchText, orderBy = 'id DESC' })
     try {
       const info = await run(`DELETE FROM ${table} WHERE id = ?`, [Number(req.params.id)]);
       if (info.changes === 0) return res.status(404).json({ error: 'No encontrado' });
+      await audit(req, { action: 'delete', entity: table, entityId: req.params.id });
       res.status(204).end();
     } catch (e) {
       next(e);
@@ -246,6 +263,7 @@ app.post('/api/invoices', async (req, res, next) => {
         Number(it.vat) || 0,
       ]);
     }
+    await audit(req, { action: 'create', entity: 'invoices', entityId: invId });
     res.status(201).json(await invoiceWithItems(invId));
   } catch (e) {
     next(e);
@@ -278,6 +296,7 @@ app.put('/api/invoices/:id', async (req, res, next) => {
         ]);
       }
     }
+    await audit(req, { action: 'update', entity: 'invoices', entityId: id });
     res.json(await invoiceWithItems(id));
   } catch (e) {
     next(e);
@@ -289,6 +308,7 @@ app.delete('/api/invoices/:id', async (req, res, next) => {
     await run('DELETE FROM invoice_items WHERE invoiceId = ?', [Number(req.params.id)]);
     const info = await run('DELETE FROM invoices WHERE id = ?', [Number(req.params.id)]);
     if (info.changes === 0) return res.status(404).json({ error: 'No encontrado' });
+    await audit(req, { action: 'delete', entity: 'invoices', entityId: req.params.id });
     res.status(204).end();
   } catch (e) {
     next(e);
@@ -352,6 +372,7 @@ app.post('/api/invoices/:id/email', async (req, res, next) => {
     ];
 
     await sendMail({ to, subject: `Factura ${inv.number} · Witamaternidad`, html: invoiceEmailHtml(inv), attachments });
+    await audit(req, { action: 'email', entity: 'invoices', entityId: inv.id, detail: to });
     res.json({ ok: true, to });
   } catch (e) {
     if (e.code === 'MAIL_NOT_CONFIGURED') return res.status(400).json({ error: e.message });
@@ -399,7 +420,11 @@ app.get('/api/dashboard', async (req, res, next) => {
 });
 
 // ---- error handler -------------------------------------------------------
+// Nunca devuelve el mensaje de la excepcion: podria traer nombres de tabla,
+// rutas de ficheros o fragmentos de datos personales.
 app.use((err, req, res, next) => {
+  if (err?.type === 'entity.too.large') return res.status(413).json({ error: 'Peticion demasiado grande' });
+  if (err instanceof SyntaxError && 'body' in err) return res.status(400).json({ error: 'JSON no valido' });
   console.error(err);
   res.status(500).json({ error: 'Error interno' });
 });

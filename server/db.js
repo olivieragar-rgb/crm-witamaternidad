@@ -16,7 +16,8 @@ function impl() {
 
 async function makeNodeSqlite() {
   const { DatabaseSync } = await import('node:sqlite');
-  const db = new DatabaseSync(join(here, 'crm.db'));
+  // CRM_DB_FILE deja a las pruebas trabajar sobre una base aparte.
+  const db = new DatabaseSync(process.env.CRM_DB_FILE || join(here, 'crm.db'));
   db.exec('PRAGMA foreign_keys = ON;');
   return {
     all: (sql, args = []) => db.prepare(sql).all(...args),
@@ -26,6 +27,7 @@ async function makeNodeSqlite() {
       return { changes: Number(r.changes), lastInsertRowid: Number(r.lastInsertRowid) };
     },
     exec: (sql) => db.exec(sql),
+    close: () => db.close(),
   };
 }
 
@@ -57,6 +59,7 @@ async function makeLibsql() {
       };
     },
     exec: (sql) => client.executeMultiple(sql),
+    close: () => client.close(),
   };
 }
 
@@ -68,6 +71,13 @@ export async function get(sql, args) {
 }
 export async function run(sql, args) {
   return (await impl()).run(sql, args);
+}
+/** Cierra la conexion. Lo usan las pruebas para poder borrar su base temporal. */
+export async function close() {
+  if (!implPromise) return;
+  await (await implPromise).close();
+  implPromise = undefined;
+  readyPromise = undefined;
 }
 
 // ---- schema + seed -------------------------------------------------------
@@ -108,6 +118,36 @@ const SCHEMA = `
     date TEXT NOT NULL DEFAULT '', text TEXT NOT NULL DEFAULT '',
     createdAt TEXT NOT NULL DEFAULT (datetime('now'))
   );
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL UNIQUE, name TEXT NOT NULL DEFAULT '',
+    role TEXT NOT NULL DEFAULT 'pro',
+    passwordHash TEXT NOT NULL,
+    active INTEGER NOT NULL DEFAULT 1,
+    createdAt TEXT NOT NULL DEFAULT (datetime('now')),
+    lastLoginAt TEXT,
+    failedAttempts INTEGER NOT NULL DEFAULT 0,
+    lockedUntil TEXT
+  );
+  CREATE TABLE IF NOT EXISTS sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tokenHash TEXT NOT NULL UNIQUE,
+    userId INTEGER NOT NULL,
+    createdAt TEXT NOT NULL DEFAULT (datetime('now')),
+    expiresAt TEXT NOT NULL,
+    lastSeenAt TEXT NOT NULL DEFAULT (datetime('now')),
+    ip TEXT NOT NULL DEFAULT '', userAgent TEXT NOT NULL DEFAULT ''
+  );
+  CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions (userId);
+  CREATE TABLE IF NOT EXISTS audit_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    at TEXT NOT NULL DEFAULT (datetime('now')),
+    userId INTEGER, userEmail TEXT NOT NULL DEFAULT '',
+    action TEXT NOT NULL DEFAULT '', entity TEXT NOT NULL DEFAULT '',
+    entityId TEXT NOT NULL DEFAULT '', detail TEXT NOT NULL DEFAULT '',
+    ip TEXT NOT NULL DEFAULT '', userAgent TEXT NOT NULL DEFAULT ''
+  );
+  CREATE INDEX IF NOT EXISTS idx_audit_at ON audit_log (at DESC);
 `;
 
 let readyPromise;
@@ -118,7 +158,9 @@ export function ready() {
 
 async function init() {
   await (await impl()).exec(SCHEMA);
-  await seed();
+  // Los datos de ejemplo inventan nombres y telefonos de clientas: solo en
+  // local. En produccion la base arranca vacia y la rellena su usuaria.
+  if (!useTurso && !process.env.CRM_DB_FILE) await seed();
 }
 
 async function seed() {

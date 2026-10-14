@@ -113,9 +113,18 @@ export default function Invoices({ initialFilter }) {
         <div class="grand"><span>Total</span><span>${eur(inv.totals.total)}</span></div>
       </div>
       ${inv.notes ? `<div class="notes">${escapeHtml(inv.notes)}</div>` : ''}
-      <script>window.onload = () => { window.print(); };<\/script>
       </body></html>`);
     win.document.close();
+
+    // El print se dispara desde aquí y no con un <script> inline dentro de la
+    // ventana: así la política de seguridad no tiene que permitir scripts
+    // inline en ningún sitio.
+    const print = () => {
+      win.focus();
+      win.print();
+    };
+    if (win.document.readyState === 'complete') print();
+    else win.addEventListener('load', print, { once: true });
   }
 
   function newRow() {
@@ -200,9 +209,7 @@ export default function Invoices({ initialFilter }) {
     }
     if (!confirm(`¿Enviar la factura ${inv.number} a ${inv.clientEmail}?`)) return;
     try {
-      const res = await fetch(`/api/invoices/${row.id}/email`, { method: 'POST' });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Error al enviar');
+      const data = await api.emailInvoice(row.id);
       alert(`Factura enviada a ${data.to}`);
     } catch (e) {
       alert(e.message);

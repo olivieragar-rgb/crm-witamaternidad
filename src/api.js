@@ -1,13 +1,41 @@
 // Thin fetch helper for the CRM API.
-async function req(method, url, body) {
+//
+// La sesion viaja en una cookie HttpOnly, asi que aqui no se guarda ningun
+// token: basta con 'same-origin' para que el navegador la mande.
+export class ApiError extends Error {
+  constructor(message, status) {
+    super(message);
+    this.status = status;
+  }
+}
+
+// Al caducar la sesion no sirve seguir pintando la vista: avisamos a la
+// aplicacion para que vuelva al login.
+const unauthorized = new Set();
+export const onUnauthorized = (fn) => {
+  unauthorized.add(fn);
+  return () => unauthorized.delete(fn);
+};
+
+/**
+ * @param {{ expireOn401?: boolean }} [opts]  Un 401 al intentar entrar no es
+ *   una sesion caducada, es una contrasena mal escrita: ahi hay que enseniar
+ *   el mensaje del servidor, no echar al usuario a la pantalla de acceso.
+ */
+async function req(method, url, body, { expireOn401 = true } = {}) {
   const res = await fetch(url, {
     method,
-    headers: body ? { 'Content-Type': 'application/json' } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
+    credentials: 'same-origin',
+    headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   if (res.status === 204) return null;
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || `Error ${res.status}`);
+  if (res.status === 401 && expireOn401) {
+    for (const fn of unauthorized) fn();
+    throw new ApiError('Se ha cerrado la sesión. Vuelve a entrar.', 401);
+  }
+  if (!res.ok) throw new ApiError(data.error || `Error ${res.status}`, res.status);
   return data;
 }
 
@@ -18,6 +46,14 @@ export const api = {
   update: (resource, id, body) => req('PUT', `/api/${resource}/${id}`, body),
   remove: (resource, id) => req('DELETE', `/api/${resource}/${id}`),
   dashboard: () => req('GET', '/api/dashboard'),
+
+  setupStatus: () => req('GET', '/api/setup-status', undefined, { expireOn401: false }),
+  setup: (body) => req('POST', '/api/auth/setup', body, { expireOn401: false }),
+  login: (body) => req('POST', '/api/auth/login', body, { expireOn401: false }),
+  logout: () => req('POST', '/api/auth/logout', {}, { expireOn401: false }),
+  me: () => req('GET', '/api/auth/me', undefined, { expireOn401: false }),
+  changePassword: (body) => req('POST', '/api/auth/password', body),
+  emailInvoice: (id) => req('POST', `/api/invoices/${id}/email`, {}),
 };
 
 export const eur = (n) =>
