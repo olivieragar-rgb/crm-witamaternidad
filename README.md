@@ -17,9 +17,24 @@ npm run dev
 - Base de datos: `server/crm.db` (SQLite local, se crea y rellena sola con
   datos de ejemplo; en produccion arranca vacia).
 
-La primera vez que se abre, la aplicacion pide crear la cuenta de
-administradora. A partir de ahi hay que entrar con email y contrasena. Para
-volver a ver esa pantalla en local, basta con borrar `server/crm.db`.
+### Entrar en local
+
+La base local trae una cuenta de desarrollo ya creada:
+
+| | |
+|---|---|
+| Email | `dev@local.test` |
+| Contrasena | `desarrollo-local` |
+
+Estas credenciales no protegen nada: viven en un fichero SQLite de tu propio
+ordenador, al que solo responde localhost, y **no existen en produccion**. La
+siembra no corre cuando hay Turso configurado.
+
+En produccion, la primera vez que se abre, la aplicacion pide crear la cuenta
+de administradora, y esa pantalla deja de responder en cuanto existe una
+cuenta. Para volver a verla en local, borra `server/crm.db` y arranca otra
+vez: se creara de nuevo la cuenta de desarrollo, asi que para probar el alta
+hay que borrarla a mano despues.
 
 Pruebas del módulo de búsqueda:
 

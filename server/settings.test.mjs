@@ -140,6 +140,15 @@ test('un campo de texto que no viene usa el DEFAULT de la tabla', async () => {
   assert.equal((await a.post('/api/clients', { name: 'Sin estado' })).data.status, 'Nuevo contacto');
 });
 
+test('la cuenta de desarrollo no existe fuera de local', async () => {
+  // Las pruebas corren con CRM_DB_FILE, igual que produccion corre con Turso:
+  // en ninguno de los dos casos se siembra nada, asi que dev@local.test no
+  // puede aparecer.
+  const db = await import('./db.js');
+  const dev = await db.get("SELECT id FROM users WHERE email = 'dev@local.test'");
+  assert.equal(dev, null, 'la cuenta de desarrollo solo se crea en la base local');
+});
+
 test('la siembra no duplica al reiniciar', async () => {
   const { seedCatalogs } = await import('./catalogs.js');
   const antes = (await a.get('/api/catalogs')).data.values.mode.length;

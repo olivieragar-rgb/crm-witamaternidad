@@ -298,6 +298,21 @@ async function backfillInvoiceSeries() {
 
 async function seed() {
   const count = async (t) => (await get(`SELECT COUNT(*) AS n FROM ${t}`)).n;
+
+  // Cuenta de desarrollo, para poder abrir el CRM en local sin tener que
+  // crear una cuenta cada vez que se borra la base.
+  //
+  // Esto SOLO corre en local: seed() no se llama cuando hay Turso (es decir,
+  // en produccion) ni en las pruebas. Las credenciales estan escritas en el
+  // README a proposito, porque no protegen nada: viven en un fichero SQLite
+  // del propio ordenador al que solo responde localhost.
+  if ((await count('users')) === 0) {
+    const { hashPassword } = await import('./passwords.js');
+    await run(
+      "INSERT INTO users (email, name, role, passwordHash, active) VALUES (?, ?, 'admin', ?, 1)",
+      ['dev@local.test', 'Desarrollo', await hashPassword('desarrollo-local')],
+    );
+  }
   const day = (offset) => {
     const d = new Date();
     d.setDate(d.getDate() + offset);
