@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api, eur, fmtDate, gestWeeks } from '../api.js';
 import FppCalculator from '../components/FppCalculator.jsx';
 import ReminderModal from '../components/ReminderModal.jsx';
+import { Skeleton } from '../components/ui.jsx';
 
 export default function Dashboard({ go }) {
   const [data, setData] = useState(null);
@@ -16,7 +17,17 @@ export default function Dashboard({ go }) {
     load();
   }, []);
 
-  if (!data) return <p className="muted">Cargando…</p>;
+  if (!data) {
+    return (
+      <section>
+        <div className="toolbar">
+          <h1>Inicio</h1>
+        </div>
+        <Skeleton rows={4} className="skeleton-stats" />
+        <Skeleton rows={3} />
+      </section>
+    );
+  }
 
   return (
     <section>
@@ -25,25 +36,25 @@ export default function Dashboard({ go }) {
       </div>
 
       <div className="stats">
-        <button className="stat" onClick={() => go('clients', { q: 'Activa' })}>
+        <button className="stat" style={{ '--i': 0 }} onClick={() => go('clients', { q: 'Activa' })}>
           <span className="stat-num">{data.activeClients}</span>
           <span className="stat-label">Clientas activas</span>
         </button>
-        <button className="stat" onClick={() => go('clients', { q: 'Nuevo contacto' })}>
+        <button className="stat" style={{ '--i': 1 }} onClick={() => go('clients', { q: 'Nuevo contacto' })}>
           <span className="stat-num">{data.newClients}</span>
           <span className="stat-label">Nuevos contactos</span>
         </button>
-        <button className="stat" onClick={() => go('invoices', { status: 'pendientes' })}>
+        <button className="stat" style={{ '--i': 2 }} onClick={() => go('invoices', { status: 'pendientes' })}>
           <span className="stat-num">{data.pendingInvoices}</span>
           <span className="stat-label">Facturas pendientes</span>
         </button>
         {data.overdueInvoices > 0 && (
-          <button className="stat warn" onClick={() => go('invoices', { status: 'pendientes' })}>
+          <button className="stat warn" style={{ '--i': 3 }} onClick={() => go('invoices', { status: 'pendientes' })}>
             <span className="stat-num">{data.overdueInvoices}</span>
             <span className="stat-label">Facturas vencidas</span>
           </button>
         )}
-        <button className="stat accent" onClick={() => go('invoices', { status: 'Pagada' })}>
+        <button className="stat accent" style={{ '--i': 4 }} onClick={() => go('invoices', { status: 'Pagada' })}>
           <span className="stat-num">{eur(data.monthRevenue)}</span>
           <span className="stat-label">Ingresos del mes</span>
         </button>

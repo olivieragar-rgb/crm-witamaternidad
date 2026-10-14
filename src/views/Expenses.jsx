@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, eur, fmtDate } from '../api.js';
-import { Toolbar, Modal, Field, EmptyRow } from '../components/ui.jsx';
+import { Toolbar, Modal, Field, EmptyRow, Skeleton } from '../components/ui.jsx';
 import { useConfig, options } from '../config.jsx';
 
 const QUARTERS = [

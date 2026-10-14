@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, fmtDate } from '../api.js';
-import { EmptyRow } from '../components/ui.jsx';
+import { EmptyRow, Skeleton } from '../components/ui.jsx';
 import { useConfig } from '../config.jsx';
 
 const TABS = [
@@ -85,7 +85,7 @@ function Retention() {
     }
   }
 
-  if (!data) return <p className="muted">Cargando…</p>;
+  if (!data) return <Skeleton rows={4} />;
 
   return (
     <div className="panel">
@@ -139,7 +139,7 @@ function AuditLog() {
     api.audit({ page, action }).then(setData);
   }, [page, action]);
 
-  if (!data) return <p className="muted">Cargando…</p>;
+  if (!data) return <Skeleton rows={4} />;
   const pages = Math.ceil(data.total / data.pageSize) || 1;
 
   return (

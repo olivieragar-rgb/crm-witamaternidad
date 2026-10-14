@@ -73,6 +73,23 @@ export function Field({ label, children }) {
   );
 }
 
+/**
+ * Hueco gris con brillo mientras llegan los datos. Mejor que un "Cargando…"
+ * porque reserva el sitio y la pagina no pega un salto al rellenarse.
+ *
+ * @param {{ rows?: number, className?: string }} props
+ */
+export function Skeleton({ rows = 3, className = '' }) {
+  return (
+    <div className={`skeleton-block ${className}`} aria-busy="true" aria-live="polite">
+      <span className="sr-only">Cargando…</span>
+      {Array.from({ length: rows }, (_, i) => (
+        <span key={i} className="skeleton-line" style={{ '--i': i }} />
+      ))}
+    </div>
+  );
+}
+
 export function EmptyRow({ colSpan, text = 'Sin resultados' }) {
   return (
     <tr>

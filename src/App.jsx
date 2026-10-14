@@ -136,9 +136,7 @@ function Shell({ session, route, go, menuOpen, setMenuOpen, pwOpen, setPwOpen, l
     <div className="shell">
       <aside className="sidebar">
         <button className="brand" onClick={() => go('dashboard')} title="Ir al inicio">
-          {/* Solo el simbolo del logo: la palabra que trae el fichero la pone
-              ahora el texto de debajo. */}
-          <span className="brand-logo" aria-hidden="true" />
+          <img src="/logo.webp" alt="" className="brand-logo" />
           <span className="brand-name">{brand.name}</span>
         </button>
 
@@ -180,7 +178,9 @@ function Shell({ session, route, go, menuOpen, setMenuOpen, pwOpen, setPwOpen, l
         </div>
       </aside>
 
-      <main className="content">
+      {/* key por vista: React remonta al cambiar de seccion y con eso se
+          dispara sola la animacion de entrada definida en CSS. */}
+      <main className="content" key={route.view}>
         {route.view === 'dashboard' && <Dashboard go={go} />}
         {route.view === 'clients' && <Clients initialFilter={route.filter} />}
         {route.view === 'calendar' && <Calendar />}

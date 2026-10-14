@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api } from '../api.js';
-import { Field } from '../components/ui.jsx';
+import { Field, Skeleton } from '../components/ui.jsx';
 import { useConfig } from '../config.jsx';
 
 const TABS = [
