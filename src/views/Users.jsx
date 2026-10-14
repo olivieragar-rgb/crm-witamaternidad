@@ -9,7 +9,8 @@ const ROLES = [
 const EMPTY = { email: '', name: '', role: 'pro', password: '', active: true };
 
 /** Gestión de usuarios. Solo la ve una administradora. */
-export default function Users({ me }) {
+/** @param {{ me: object, embedded?: boolean }} props */
+export default function Users({ me, embedded }) {
   const [rows, setRows] = useState([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(EMPTY);
@@ -62,9 +63,18 @@ export default function Users({ me }) {
     }
   }
 
+  const Wrapper = embedded ? 'div' : 'section';
   return (
-    <section>
-      <Toolbar title="Usuarios" onNew={newRow} newLabel="Nuevo usuario" />
+    <Wrapper>
+      {embedded ? (
+        <div className="save-row users-head">
+          <button className="primary" onClick={newRow}>
+            + Nuevo usuario
+          </button>
+        </div>
+      ) : (
+        <Toolbar title="Usuarios" onNew={newRow} newLabel="Nuevo usuario" />
+      )}
 
       <table className="grid-table">
         <thead>
@@ -146,6 +156,6 @@ export default function Users({ me }) {
           )}
         </Modal>
       )}
-    </section>
+    </Wrapper>
   );
 }

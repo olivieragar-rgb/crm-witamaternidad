@@ -1785,3 +1785,99 @@ a.btn:hover {
   transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out),
     border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
+
+/* ---- herramientas ---- */
+.tool-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  align-items: start;
+}
+
+.tool-growth {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.tool-note {
+  border-top: 1px solid var(--border-light);
+  padding-top: 14px;
+  margin: 0;
+}
+
+.users-head {
+  margin: 0 0 14px;
+}
+
+/* ---- resultado del percentil ---- */
+.percentile-result {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-left: 4px solid var(--green);
+}
+
+.percentile-num {
+  font-family: var(--font-heading);
+  font-size: 34px;
+  color: var(--green-dark);
+  line-height: 1.1;
+}
+
+.percentile-read {
+  font-size: 14px;
+  color: var(--text-soft);
+}
+
+/* Fuera del P3-P97 la OMS pide mirarlo, no alarmarse: terracota, no rojo. */
+.percentile-result.tone-low,
+.percentile-result.tone-high {
+  border-left-color: var(--terracotta);
+}
+
+.tone-low .percentile-num,
+.tone-high .percentile-num {
+  color: var(--terracotta-dark);
+}
+
+/* ---- grafico de crecimiento ---- */
+.growth-chart {
+  position: relative;
+  margin: 8px 0 4px;
+}
+
+.growth-chart svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.chart-tip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  margin-top: 6px;
+  padding: 8px 12px;
+  background: var(--bg-warm);
+  border-radius: var(--radius);
+  font-size: 13px;
+  min-height: 36px;
+}
+
+.chart-tip .tip-baby {
+  color: #8a3f1d;
+  font-weight: 700;
+}
+
+.growth-table {
+  margin-top: 16px;
+}
+
+@media (max-width: 760px) {
+  .tool-grid {
+    grid-template-columns: 1fr;
+  }
+}

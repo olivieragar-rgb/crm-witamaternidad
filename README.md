@@ -121,6 +121,24 @@ El inicio lista las facturas pasadas de vencimiento y las citas proximas.
 Nada se envia solo: se puede leer el texto antes de mandarlo y hay que
 confirmar cada envio. Las plantillas se editan en Ajustes.
 
+## Herramientas
+
+Dos calculadoras de consulta, en su propia seccion:
+
+- **Fecha probable de parto**: regla de Naegele, 280 dias desde la ultima
+  regla, con las semanas de gestacion de hoy.
+- **Percentil de peso**: peso para la edad segun los **patrones de crecimiento
+  infantil de la OMS**, del nacimiento a los 24 meses, con la curva del bebe
+  sobre las de referencia.
+
+Los datos de la OMS no estan escritos a mano: `scripts/build-who-data.mjs` los
+genera desde los ficheros oficiales, y las pruebas comprueban que el calculo a
+partir de L, M y S reproduce los pesos que publica la propia OMS, con 126
+comparaciones dentro de un gramo.
+
+Es una ayuda visual para la consulta, no un diagnostico, y la pantalla lo dice.
+Lo que se teclea ahi no se guarda en el CRM.
+
 ## Proteccion de datos
 
 El CRM guarda datos de embarazo, lactancia y notas de seguimiento: **datos de
@@ -170,6 +188,8 @@ server/oncall.js     Ventanas de guardia alrededor de la FPP
 server/expenses.js   Gastos y resumen del 303 y el 130
 server/reminders.js  Recordatorios de cobro y de cita
 server/privacy.js    Derechos de la clienta, conservacion y registro de accesos
+src/lib/growth.js    Percentiles de peso (metodo LMS de la OMS)
+src/data/           Tablas de la OMS, generadas por scripts/build-who-data.mjs
 src/config.jsx       Ajustes y catalogos cargados una vez para toda la app
 docs/rgpd/           RAT, encargados, protocolo de brecha, politica
 server/db.js         Capa de datos (node:sqlite en local, Turso en produccion)

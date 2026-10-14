@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { api, eur, fmtDate, gestWeeks } from '../api.js';
-import FppCalculator from '../components/FppCalculator.jsx';
 import ReminderModal from '../components/ReminderModal.jsx';
 import { Skeleton } from '../components/ui.jsx';
 
@@ -127,7 +126,6 @@ export default function Dashboard({ go }) {
       )}
 
       <div className="panels">
-        <FppCalculator />
 
         <div className="panel">
           <div className="panel-head">

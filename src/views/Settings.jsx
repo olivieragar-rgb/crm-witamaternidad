@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { api } from '../api.js';
 import { Field, Skeleton } from '../components/ui.jsx';
 import { useConfig } from '../config.jsx';
+import Users from './Users.jsx';
 
 const TABS = [
   { id: 'issuer', label: 'Datos fiscales' },
@@ -12,6 +13,7 @@ const TABS = [
   { id: 'emailTemplate', label: 'Email' },
   { id: 'privacy', label: 'Privacidad' },
   { id: 'catalogs', label: 'Listas' },
+  { id: 'users', label: 'Usuarios' },
 ];
 
 const ISSUER_FIELDS = [
@@ -27,7 +29,7 @@ const ISSUER_FIELDS = [
 ];
 
 /** Ajustes del negocio. Solo para administradoras. */
-export default function Settings() {
+export default function Settings({ me }) {
   const config = useConfig();
   const [tab, setTab] = useState('issuer');
   const [draft, setDraft] = useState({
@@ -331,6 +333,16 @@ export default function Settings() {
       )}
 
       {tab === 'catalogs' && <Catalogs />}
+
+      {tab === 'users' && (
+        <div className="panel">
+          <p className="muted">
+            Quien puede entrar al CRM. Mientras trabajes sola basta con tu cuenta; esto es lo que usarás el
+            día que entren más profesionales, y es lo que hace que el registro de accesos signifique algo.
+          </p>
+          <Users me={me} embedded />
+        </div>
+      )}
     </section>
   );
 }

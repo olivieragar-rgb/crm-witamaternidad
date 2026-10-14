@@ -6,9 +6,9 @@ import Services from './views/Services.jsx';
 import Appointments from './views/Appointments.jsx';
 import Invoices from './views/Invoices.jsx';
 import Expenses from './views/Expenses.jsx';
+import Tools from './views/Tools.jsx';
 import Calendar from './views/Calendar.jsx';
 import Login from './views/Login.jsx';
-import Users from './views/Users.jsx';
 import Settings from './views/Settings.jsx';
 import Privacy from './views/Privacy.jsx';
 import PasswordModal from './components/PasswordModal.jsx';
@@ -22,7 +22,7 @@ const NAV = [
   { id: 'services', label: 'Servicios', icon: '✦' },
   { id: 'invoices', label: 'Facturas', icon: '€' },
   { id: 'expenses', label: 'Gastos', icon: '▼' },
-  { id: 'users', label: 'Usuarios', icon: '⚇', adminOnly: true },
+  { id: 'tools', label: 'Herramientas', icon: '⚒' },
   { id: 'privacy', label: 'Privacidad', icon: '⛉', adminOnly: true },
   { id: 'settings', label: 'Ajustes', icon: '⚙', adminOnly: true },
 ];
@@ -188,9 +188,9 @@ function Shell({ session, route, go, menuOpen, setMenuOpen, pwOpen, setPwOpen, l
         {route.view === 'services' && <Services />}
         {route.view === 'invoices' && <Invoices initialFilter={route.filter} />}
         {route.view === 'expenses' && <Expenses />}
-        {route.view === 'users' && session.role === 'admin' && <Users me={session} />}
+        {route.view === 'tools' && <Tools />}
         {route.view === 'privacy' && session.role === 'admin' && <Privacy />}
-        {route.view === 'settings' && session.role === 'admin' && <Settings />}
+        {route.view === 'settings' && session.role === 'admin' && <Settings me={session} />}
       </main>
 
       {pwOpen && <PasswordModal onClose={() => setPwOpen(false)} />}
