@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api, fmtDate, gestWeeks } from '../api.js';
 import { searchItems } from '../search.js';
 import { Toolbar, Badge, Modal, Field, EmptyRow } from '../components/ui.jsx';
+import { useConfig, options } from '../config.jsx';
 
 const EMPTY = {
   name: '', email: '', phone: '', service: '', mode: '', dueDate: '',
@@ -9,12 +10,11 @@ const EMPTY = {
   taxId: '', address: '', postalCode: '', city: '', province: '', country: 'España',
 };
 const FISCAL = ['taxId', 'address', 'postalCode', 'city', 'province', 'country'];
-const SERVICES = ['Hipnoparto / Preparación al parto', 'Lactancia', 'Consulta online', 'Otro'];
-const MODES = ['Presencial (Granada)', 'Online'];
-const STATUSES = ['Nuevo contacto', 'Activa', 'Finalizada'];
+
 const text = (c) => `${c.name} ${c.email} ${c.phone} ${c.service} ${c.mode} ${c.status} ${c.notes} ${c.taxId}`;
 
 export default function Clients({ initialFilter }) {
+  const config = useConfig();
   const [rows, setRows] = useState([]);
   const [query, setQuery] = useState(initialFilter?.q || '');
   const [open, setOpen] = useState(false);
@@ -30,8 +30,13 @@ export default function Clients({ initialFilter }) {
   const visible = searchItems(rows, query, text);
   const set = (f) => (e) => setForm({ ...form, [f]: e.target.value });
 
+  // Los desplegables salen de los catalogos, no de constantes del codigo.
+  const SERVICES = options(config.catalogs.clientService, form.service);
+  const MODES = options(config.catalogs.mode, form.mode);
+  const STATUSES = options(config.catalogs.clientStatus, form.status);
+
   function newRow() {
-    setForm(EMPTY);
+    setForm({ ...EMPTY, status: options(config.catalogs.clientStatus)[0] ?? '' });
     setEditingId(null);
     setError('');
     setOpen(true);

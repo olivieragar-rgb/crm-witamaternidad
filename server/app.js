@@ -6,6 +6,7 @@ import { invoiceXlsxBase64 } from './invoice-xlsx.js';
 import { invoicePdf } from './invoice-pdf.js';
 import { invoicesRouter, invoiceWithItems, lineAmount } from './invoices.js';
 import { settingsRouter, getSetting } from './settings.js';
+import { catalogsRouter } from './catalogs.js';
 import { securityHeaders, sameOrigin } from './security.js';
 import { attachUser, requireAuth, authRouter, usersRouter, audit } from './auth.js';
 
@@ -205,6 +206,7 @@ app.use(
 
 app.use('/api/invoices', invoicesRouter);
 app.use('/api/settings', settingsRouter);
+app.use('/api/catalogs', catalogsRouter);
 
 /** Datos de los ajustes que la factura no guarda en su propia copia. */
 const pdfExtras = (inv, invoicing) => ({
@@ -229,7 +231,12 @@ app.get('/api/invoices/:id/pdf', async (req, res, next) => {
 
 // ---- enviar factura por email --------------------------------------------
 
-function invoiceEmailHtml(inv) {
+/** Sustituye {{marcador}} por su valor; lo que no reconozca se queda vacio. */
+function fillTemplate(text, vars) {
+  return String(text || '').replace(/\{\{(\w+)\}\}/g, (_, key) => String(vars[key] ?? ''));
+}
+
+function invoiceEmailHtml(inv, template, vars) {
   const esc = (s) => String(s ?? '').replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]);
   const money = (n) => `${(Number(n) || 0).toFixed(2)} €`;
   const rows = inv.items
@@ -241,10 +248,10 @@ function invoiceEmailHtml(inv) {
         `<td align="right" style="padding:8px;border-bottom:1px solid #ede7df">${money(lineAmount(it))}</td></tr>`,
     )
     .join('');
-  const brand = esc(inv.issuer?.name || 'Factura');
+  const brand = esc(vars.negocio || 'Factura');
   return `<div style="font-family:Arial,sans-serif;color:#2e2a25;max-width:640px">
     <h2 style="color:#476149">${brand}</h2>
-    <p>Hola ${esc(inv.client?.name || '')}, adjuntamos tu factura <strong>${esc(inv.number)}</strong> (${esc(inv.date)}).</p>
+    <p>${esc(fillTemplate(template.greeting, vars))}</p>
     <table style="width:100%;border-collapse:collapse;margin:16px 0">
       <tr style="color:#9c9489;font-size:12px;text-transform:uppercase">
         <th align="left" style="padding:8px">Concepto</th><th align="right" style="padding:8px">Cant.</th>
@@ -254,6 +261,7 @@ function invoiceEmailHtml(inv) {
     <p style="text-align:right;font-size:18px"><strong>Total: ${money(inv.totals.total)}</strong>
       <br><span style="font-size:13px;color:#6b6259">Base ${money(inv.totals.base)} · IVA ${money(inv.totals.vat)}</span></p>
     ${inv.notes ? `<p style="color:#6b6259;font-size:13px">${esc(inv.notes)}</p>` : ''}
+    ${template.signature ? `<p style="color:#9c9489;font-size:12px">${esc(template.signature)}</p>` : ''}
   </div>`;
 }
 
@@ -288,8 +296,17 @@ app.post('/api/invoices/:id/email', async (req, res, next) => {
       },
     ];
 
-    const subject = `Factura ${inv.number}${inv.issuer?.name ? ` · ${inv.issuer.name}` : ''}`;
-    await sendMail({ to, subject, html: invoiceEmailHtml(inv), attachments });
+    const template = await getSetting('emailTemplate');
+    const brand = await getSetting('brand');
+    const vars = {
+      clienta: inv.client?.name || '',
+      numero: inv.number,
+      fecha: inv.date,
+      total: `${inv.totals.total.toFixed(2)} €`,
+      negocio: inv.issuer?.name || brand.name,
+    };
+    const subject = fillTemplate(template.subject, vars) || `Factura ${inv.number}`;
+    await sendMail({ to, subject, html: invoiceEmailHtml(inv, template, vars), attachments });
     // Enviarla la pasa a "Enviada", que es lo que acaba de ocurrir de verdad.
     if (inv.status === 'Emitida') await run("UPDATE invoices SET status = 'Enviada' WHERE id = ?", [inv.id]);
     await audit(req, { action: 'email', entity: 'invoices', entityId: inv.id, detail: to });

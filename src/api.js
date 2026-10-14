@@ -70,6 +70,11 @@ export const api = {
 
   settings: () => req('GET', '/api/settings'),
   saveSettings: (key, body) => req('PUT', `/api/settings/${key}`, body),
+
+  catalogs: () => req('GET', '/api/catalogs'),
+  addCatalog: (body) => req('POST', '/api/catalogs', body),
+  updateCatalog: (id, body) => req('PUT', `/api/catalogs/${id}`, body),
+  removeCatalog: (id) => req('DELETE', `/api/catalogs/${id}`),
 };
 
 export const eur = (n) =>

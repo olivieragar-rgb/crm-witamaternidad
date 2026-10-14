@@ -153,6 +153,13 @@ const SCHEMA = `
     value TEXT NOT NULL DEFAULT '{}',
     updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
   );
+  CREATE TABLE IF NOT EXISTS catalogs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type TEXT NOT NULL, value TEXT NOT NULL,
+    sortOrder INTEGER NOT NULL DEFAULT 0,
+    active INTEGER NOT NULL DEFAULT 1
+  );
+  CREATE INDEX IF NOT EXISTS idx_catalogs_type ON catalogs (type, sortOrder);
 `;
 
 // Columnas e indices que se anadieron despues de la primera version. Se
@@ -206,6 +213,10 @@ export function ready() {
 async function init() {
   await (await impl()).exec(SCHEMA);
   await migrate();
+  // Las listas desplegables arrancan con los valores de fabrica; a partir de
+  // ahi se editan desde Ajustes.
+  const { seedCatalogs } = await import('./catalogs.js');
+  await seedCatalogs();
   // Los datos de ejemplo inventan nombres y telefonos de clientas: solo en
   // local. En produccion la base arranca vacia y la rellena su usuaria.
   if (!useTurso && !process.env.CRM_DB_FILE) await seed();

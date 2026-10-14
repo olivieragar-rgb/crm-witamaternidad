@@ -18,6 +18,16 @@ export const DEFAULTS = {
     email: '',
     phone: '',
   },
+  brand: {
+    name: 'Witamaternidad',
+    tagline: 'Hipnoparto · Lactancia',
+    sidebarFooter: 'WawaywawO',
+  },
+  emailTemplate: {
+    subject: 'Factura {{numero}} · {{negocio}}',
+    greeting: 'Hola {{clienta}}, adjuntamos tu factura {{numero}} ({{fecha}}).',
+    signature: '',
+  },
   invoicing: {
     series: '', // serie de las facturas ordinarias; vacía = solo año y correlativo
     rectifySeries: 'R', // serie de las rectificativas

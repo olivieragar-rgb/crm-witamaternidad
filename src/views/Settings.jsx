@@ -1,10 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { api } from '../api.js';
 import { Field } from '../components/ui.jsx';
+import { useConfig } from '../config.jsx';
 
 const TABS = [
   { id: 'issuer', label: 'Datos fiscales' },
   { id: 'invoicing', label: 'Facturación' },
+  { id: 'brand', label: 'Marca' },
+  { id: 'emailTemplate', label: 'Email' },
+  { id: 'catalogs', label: 'Listas' },
 ];
 
 const ISSUER_FIELDS = [
@@ -21,20 +25,16 @@ const ISSUER_FIELDS = [
 
 /** Ajustes del negocio. Solo para administradoras. */
 export default function Settings() {
+  const config = useConfig();
   const [tab, setTab] = useState('issuer');
-  const [settings, setSettings] = useState(null);
-  const [draft, setDraft] = useState(null);
+  const [draft, setDraft] = useState({
+    issuer: config.issuer,
+    invoicing: config.invoicing,
+    brand: config.brand,
+    emailTemplate: config.emailTemplate,
+  });
   const [saved, setSaved] = useState('');
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    api.settings().then((s) => {
-      setSettings(s);
-      setDraft(s);
-    });
-  }, []);
-
-  if (!draft) return <p className="muted">Cargando…</p>;
 
   const set = (key, field) => (e) =>
     setDraft({ ...draft, [key]: { ...draft[key], [field]: e.target.value } });
@@ -43,8 +43,10 @@ export default function Settings() {
     setError('');
     try {
       const value = await api.saveSettings(key, draft[key]);
-      setSettings({ ...settings, [key]: value });
       setDraft({ ...draft, [key]: value });
+      // Recargar la configuración global: la marca y las listas se usan en
+      // toda la aplicación, no solo aquí.
+      await config.reload();
       setSaved(key);
       setTimeout(() => setSaved(''), 2500);
     } catch (e) {
@@ -145,7 +147,139 @@ export default function Settings() {
           <SaveRow onSave={() => save('invoicing')} saved={saved === 'invoicing'} />
         </div>
       )}
+
+      {tab === 'brand' && (
+        <div className="panel">
+          <p className="muted">Lo que se ve en la barra lateral de la aplicación.</p>
+          <div className="form-grid">
+            <Field label="Nombre">
+              <input value={draft.brand.name} onChange={set('brand', 'name')} />
+            </Field>
+            <Field label="Subtítulo">
+              <input value={draft.brand.tagline} onChange={set('brand', 'tagline')} />
+            </Field>
+            <Field label="Pie de la barra lateral">
+              <input value={draft.brand.sidebarFooter} onChange={set('brand', 'sidebarFooter')} />
+            </Field>
+          </div>
+          <SaveRow onSave={() => save('brand')} saved={saved === 'brand'} />
+        </div>
+      )}
+
+      {tab === 'emailTemplate' && (
+        <div className="panel">
+          <p className="muted">
+            Texto del correo con el que se envía una factura. Puedes usar los marcadores{' '}
+            <code>{'{{clienta}}'}</code>, <code>{'{{numero}}'}</code>, <code>{'{{fecha}}'}</code>,{' '}
+            <code>{'{{total}}'}</code> y <code>{'{{negocio}}'}</code>.
+          </p>
+          <Field label="Asunto">
+            <input value={draft.emailTemplate.subject} onChange={set('emailTemplate', 'subject')} />
+          </Field>
+          <Field label="Saludo">
+            <textarea rows={2} value={draft.emailTemplate.greeting} onChange={set('emailTemplate', 'greeting')} />
+          </Field>
+          <Field label="Despedida">
+            <textarea
+              rows={2}
+              value={draft.emailTemplate.signature}
+              onChange={set('emailTemplate', 'signature')}
+            />
+          </Field>
+          <p className="muted small">
+            El detalle de las líneas y el total se añaden solos; aquí solo se escribe el texto que los rodea.
+          </p>
+          <SaveRow onSave={() => save('emailTemplate')} saved={saved === 'emailTemplate'} />
+        </div>
+      )}
+
+      {tab === 'catalogs' && <Catalogs />}
     </section>
+  );
+}
+
+/** Las listas desplegables de los formularios. */
+function Catalogs() {
+  const config = useConfig();
+  const [adding, setAdding] = useState({});
+  const [error, setError] = useState('');
+
+  const refresh = () => config.reload();
+  const run = async (fn) => {
+    setError('');
+    try {
+      await fn();
+      await refresh();
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+
+  return (
+    <div className="panel">
+      <p className="muted">
+        Las opciones que aparecen en los desplegables. <strong>Desactivar</strong> una la quita de los
+        formularios nuevos pero no toca las fichas que ya la usaban; <strong>borrar</strong> solo tiene
+        sentido para una opción recién creada por error.
+      </p>
+      {error && <p className="error">{error}</p>}
+
+      {Object.entries(config.catalogTypes).map(([type, label]) => (
+        <div className="catalog" key={type}>
+          <h3>{label}</h3>
+          <ul className="catalog-list">
+            {(config.catalogs[type] || []).map((opt) => (
+              <li key={opt.id} className={opt.active ? '' : 'inactive-row'}>
+                <input
+                  defaultValue={opt.value}
+                  onBlur={(e) => {
+                    if (e.target.value.trim() && e.target.value !== opt.value) {
+                      run(() => api.updateCatalog(opt.id, { value: e.target.value }));
+                    }
+                  }}
+                />
+                <button onClick={() => run(() => api.updateCatalog(opt.id, { active: !opt.active }))}>
+                  {opt.active ? 'Desactivar' : 'Activar'}
+                </button>
+                <button
+                  className="danger"
+                  onClick={() => {
+                    if (confirm(`¿Borrar "${opt.value}" de la lista?`)) {
+                      run(() => api.removeCatalog(opt.id));
+                    }
+                  }}
+                >
+                  Borrar
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="catalog-add">
+            <input
+              value={adding[type] || ''}
+              placeholder="Añadir opción…"
+              onChange={(e) => setAdding({ ...adding, [type]: e.target.value })}
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter') return;
+                e.preventDefault();
+                const value = (adding[type] || '').trim();
+                if (!value) return;
+                run(() => api.addCatalog({ type, value })).then(() => setAdding({ ...adding, [type]: '' }));
+              }}
+            />
+            <button
+              onClick={() => {
+                const value = (adding[type] || '').trim();
+                if (!value) return;
+                run(() => api.addCatalog({ type, value })).then(() => setAdding({ ...adding, [type]: '' }));
+              }}
+            >
+              Añadir
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 

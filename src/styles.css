@@ -1359,3 +1359,82 @@ a.btn:hover {
     grid-template-columns: 1fr 55px 70px 55px 55px 75px 28px;
   }
 }
+
+.sidebar-credit {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+  padding: 0 8px 8px;
+}
+
+/* ---- editor de listas ---- */
+.catalog {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-light);
+}
+
+.catalog:first-of-type {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.catalog h3 {
+  font-family: var(--font-body);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin: 0 0 10px;
+}
+
+.catalog-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.catalog-list li,
+.catalog-add {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.catalog-list input,
+.catalog-add input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-family: var(--font-body);
+  background: var(--card);
+  color: var(--text);
+}
+
+.catalog-list button,
+.catalog-add button {
+  flex: none;
+  padding: 7px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  font-family: var(--font-body);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.catalog-add {
+  margin-top: 10px;
+}
+
+.panel code {
+  background: var(--bg-warm);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 12px;
+}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, eur, fmtDate } from '../api.js';
 import { Toolbar, Badge, Modal, Field, EmptyRow } from '../components/ui.jsx';
+import { useConfig, options } from '../config.jsx';
 
 const PAYMENT_STATES = ['Emitida', 'Enviada', 'Pagada'];
 const FILTERS = [
@@ -47,10 +48,10 @@ function totals(items, irpfRate) {
 }
 
 export default function Invoices({ initialFilter }) {
+  const config = useConfig();
   const [data, setData] = useState({ rows: [], total: 0, years: [], page: 1, pageSize: 50 });
   const [clients, setClients] = useState([]);
   const [services, setServices] = useState([]);
-  const [settings, setSettings] = useState(null);
 
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState(initialFilter?.status || '');
@@ -74,8 +75,8 @@ export default function Invoices({ initialFilter }) {
   useEffect(() => {
     api.list('clients').then(setClients);
     api.list('services').then(setServices);
-    api.settings().then(setSettings);
   }, []);
+  const settings = config;
 
   // Al cambiar un filtro se vuelve a la primera página: si no, la lista sale
   // vacía porque la página 3 del filtro anterior ya no existe.
@@ -433,11 +434,12 @@ export default function Invoices({ initialFilter }) {
               <input type="date" value={form.dueDate} onChange={set('dueDate')} />
             </Field>
             <Field label="Forma de pago">
-              <input
-                value={form.paymentMethod}
-                onChange={set('paymentMethod')}
-                placeholder="Transferencia, Bizum…"
-              />
+              <select value={form.paymentMethod} onChange={set('paymentMethod')}>
+                <option value="">—</option>
+                {options(config.catalogs.paymentMethod, form.paymentMethod).map((m) => (
+                  <option key={m}>{m}</option>
+                ))}
+              </select>
             </Field>
             <Field label="Retención IRPF %">
               <input type="number" step="0.01" min="0" max="100" value={form.irpfRate} onChange={set('irpfRate')} />

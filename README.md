@@ -77,6 +77,24 @@ la original, que es lo que exige la norma.
 Antes de poder emitir hay que rellenar los datos fiscales en **Ajustes**, y la
 clienta necesita NIF en su ficha.
 
+## Configuracion
+
+Nada de lo propio del negocio esta escrito en el codigo. En **Ajustes** (solo
+administradoras) se editan:
+
+- **Datos fiscales**: nombre, NIF y direccion que salen en las facturas.
+- **Facturacion**: series, IVA e IRPF por defecto, nota de exencion, datos de
+  pago y pie de la factura.
+- **Marca**: nombre, subtitulo y pie de la barra lateral.
+- **Email**: asunto y texto del correo de factura, con los marcadores
+  `{{clienta}}`, `{{numero}}`, `{{fecha}}`, `{{total}}` y `{{negocio}}`.
+- **Listas**: las opciones de los desplegables (servicios, modalidades,
+  estados de clienta y de cita, formas de pago).
+
+Desactivar una opcion de una lista la quita de los formularios nuevos pero no
+toca las fichas que ya la usaban, y renombrarla tampoco reescribe lo ya
+guardado: cambiar la lista de opciones no deberia reescribir el pasado.
+
 ## Estructura
 
 ```
@@ -87,7 +105,9 @@ server/passwords.js  Hash de contrasenas con scrypt
 server/security.js   Cabeceras, cookies y comprobacion de origen
 server/invoices.js   Facturacion: borrador, emision, rectificativas
 server/invoice-pdf.js  PDF de factura
-server/settings.js   Ajustes del negocio (datos fiscales, facturacion)
+server/settings.js   Ajustes del negocio (datos fiscales, facturacion, marca)
+server/catalogs.js   Listas desplegables editables
+src/config.jsx       Ajustes y catalogos cargados una vez para toda la app
 server/db.js         Capa de datos (node:sqlite en local, Turso en produccion)
 server/index.js      Punto de entrada local
 src/                 Frontend React (vistas por modulo)

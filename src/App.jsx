@@ -10,6 +10,7 @@ import Login from './views/Login.jsx';
 import Users from './views/Users.jsx';
 import Settings from './views/Settings.jsx';
 import PasswordModal from './components/PasswordModal.jsx';
+import { ConfigProvider, useConfig } from './config.jsx';
 
 const NAV = [
   { id: 'dashboard', label: 'Inicio', icon: '◈' },
@@ -107,16 +108,34 @@ export default function App() {
     );
   }
 
+  return (
+    <ConfigProvider>
+      <Shell
+        session={session}
+        route={route}
+        go={go}
+        menuOpen={menuOpen}
+        setMenuOpen={setMenuOpen}
+        pwOpen={pwOpen}
+        setPwOpen={setPwOpen}
+        logout={logout}
+      />
+    </ConfigProvider>
+  );
+}
+
+function Shell({ session, route, go, menuOpen, setMenuOpen, pwOpen, setPwOpen, logout }) {
+  const { brand } = useConfig();
   const nav = NAV.filter((n) => !n.adminOnly || session.role === 'admin');
 
   return (
     <div className="shell">
       <aside className="sidebar">
         <button className="brand" onClick={() => go('dashboard')} title="Ir al inicio">
-          <img src="/logo.webp" alt="Wita Maternidad" className="brand-logo" />
+          <img src="/logo.webp" alt="" className="brand-logo" />
           <span className="brand-text">
-            <span className="brand-name">Witamaternidad</span>
-            <span className="brand-sub">Hipnoparto · Lactancia</span>
+            <span className="brand-name">{brand.name}</span>
+            <span className="brand-sub">{brand.tagline}</span>
           </span>
         </button>
 
@@ -134,6 +153,7 @@ export default function App() {
         </nav>
 
         <div className="sidebar-foot">
+          {brand.sidebarFooter && <div className="sidebar-credit">{brand.sidebarFooter}</div>}
           <button className="user-button" onClick={() => setMenuOpen((v) => !v)} aria-expanded={menuOpen}>
             <span className="user-avatar">{(session.name || session.email).charAt(0).toUpperCase()}</span>
             <span className="user-text">

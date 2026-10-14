@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react';
 import { api, fmtDate } from '../api.js';
 import { searchItems } from '../search.js';
 import { Toolbar, Badge, Modal, Field, EmptyRow } from '../components/ui.jsx';
+import { useConfig, options } from '../config.jsx';
 
 const EMPTY = { clientId: '', serviceId: '', date: '', mode: '', status: 'Programada', notes: '' };
-const MODES = ['Presencial (Granada)', 'Online'];
-const STATUSES = ['Programada', 'Realizada', 'Cancelada'];
+
 const text = (a) => `${a.clientName} ${a.serviceName} ${a.mode} ${a.status} ${a.notes}`;
 
 // <input type="datetime-local"> wants "YYYY-MM-DDTHH:mm"; the API stores "YYYY-MM-DD HH:mm".
@@ -13,6 +13,7 @@ const toInput = (d) => (d ? d.replace(' ', 'T').slice(0, 16) : '');
 const toStore = (d) => (d ? d.replace('T', ' ') : '');
 
 export default function Appointments() {
+  const config = useConfig();
   const [rows, setRows] = useState([]);
   const [clients, setClients] = useState([]);
   const [services, setServices] = useState([]);
@@ -32,8 +33,12 @@ export default function Appointments() {
   const visible = searchItems(rows, query, text);
   const set = (f) => (e) => setForm({ ...form, [f]: e.target.value });
 
+  // Los desplegables salen de los catalogos, no de constantes del codigo.
+  const MODES = options(config.catalogs.mode, form.mode);
+  const STATUSES = options(config.catalogs.appointmentStatus, form.status);
+
   function newRow() {
-    setForm(EMPTY);
+    setForm({ ...EMPTY, status: options(config.catalogs.appointmentStatus)[0] ?? '' });
     setEditingId(null);
     setError('');
     setOpen(true);
