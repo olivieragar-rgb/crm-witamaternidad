@@ -403,10 +403,11 @@ leer una ficha deja una entrada en el registro; un `pro` no ve el registro.
 
 ## Riesgos y cosas pendientes
 
-- **Verifactu**: pendiente de confirmar con la gestoría si ya aplica. El
-  diseño deja los campos del encadenado listos, pero no implementa el envío a
-  la AEAT ni el QR. Si aplica, es un bloque 5.
-- **Región de Turso**: a verificar antes de dar el RGPD por hecho.
+- **Verifactu**: ~~pendiente de confirmar~~ → **no aplica todavía**
+  (confirmado el 2026-10-14). El diseño deja los campos del encadenado listos;
+  el día que aplique faltaría el QR y el envío a la AEAT, no rediseñar nada.
+- **Región de Turso**: ~~a verificar~~ → **Irlanda (UE)**, verificado el
+  2026-10-14.
 - **Datos de prueba**: el `seed` actual inventa clientas con nombres y
   teléfonos. Al añadir el login hay que dejar de sembrar datos de ejemplo en
   producción; solo en local.

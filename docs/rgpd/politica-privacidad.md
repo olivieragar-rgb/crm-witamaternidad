@@ -1,8 +1,9 @@
 # Política de privacidad
 
 > Borrador para publicar en la web y enlazar desde donde se recoja el
-> consentimiento. **Hay que completar lo que está entre corchetes** y
-> revisarlo con tu asesoría. Esto no es asesoramiento jurídico.
+> consentimiento. **Hay que completar lo que está entre corchetes antes de dar
+> de alta a la primera clienta real.** Mientras el uso sea propio y con datos
+> de prueba, no hace falta. Esto no es asesoramiento jurídico.
 
 Última revisión: 2026-10-14
 

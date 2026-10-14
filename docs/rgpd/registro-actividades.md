@@ -1,8 +1,9 @@
 # Registro de actividades de tratamiento (RAT)
 
 > Plantilla rellenada con lo que el CRM hace de verdad. **Hay que completar lo
-> que está entre corchetes** y revisarlo con tu asesoría antes de darlo por
-> bueno. Este documento no es asesoramiento jurídico.
+> que está entre corchetes** cuando el sistema pase a uso real con clientas.
+> Mientras siga siendo de uso propio y sin datos reales, queda como borrador.
+> Este documento no es asesoramiento jurídico.
 
 Última revisión: 2026-10-14
 
@@ -55,8 +56,8 @@ persona; no se borra nada automáticamente.
 **Destinatarios.** Ninguno, salvo los encargados de tratamiento listados en
 [`encargados.md`](encargados.md).
 
-**Transferencias internacionales.** Ver `encargados.md`. **Pendiente de
-verificar** que la base de datos de Turso esté en región de la UE.
+**Transferencias internacionales.** Ninguna en el almacenamiento: la base de
+datos está en Irlanda (UE), verificado el 2026-10-14. Ver `encargados.md`.
 
 **Medidas de seguridad.** Ver la sección final.
 
@@ -124,9 +125,19 @@ capacidad de demostrar accesos pasados con el principio de minimización.
 
 ## Pendiente
 
-- [ ] Confirmar con la asesoría la base legal del Art. 9 y los plazos fiscales.
-- [ ] Verificar que la base de Turso está en región de la UE.
+Nada de esto corre mientras el sistema sea de uso propio y sin datos reales de
+clientas. Hay que resolverlo **antes de dar de alta a la primera clienta real**.
+
+- [x] Verificar que la base de Turso está en región de la UE → Irlanda.
+- [ ] Confirmar la base legal del Art. 9 y los plazos fiscales.
 - [ ] Fijar y aplicar un plazo de conservación del registro de accesos.
 - [ ] Firmar los contratos de encargado con los proveedores (`encargados.md`).
 - [ ] Publicar la política de privacidad y enlazarla desde donde se recoja el
       consentimiento.
+
+## Facturación electrónica (Verifactu)
+
+**No aplica todavía** (confirmado el 2026-10-14). El CRM ya guarda el hash
+encadenado de cada factura emitida, así que el día que aplique no habrá que
+rediseñar el modelo de datos: faltaría añadir el QR en la factura y el envío a
+la AEAT.

@@ -115,10 +115,18 @@ salud, categoria especial del Art. 9 del RGPD**. Lo que hace el sistema:
   por encima del plazo configurado y propone anonimizarlas. Nunca se borra
   nada de forma automatica.
 
+La base de datos esta en **Irlanda (UE)**, asi que no hay transferencia
+internacional del almacenamiento.
+
 En `docs/rgpd/` estan el registro de actividades de tratamiento, los
 encargados de tratamiento, el protocolo de brecha y el borrador de politica de
-privacidad. **Los cuatro tienen apartados pendientes** marcados entre
-corchetes que hay que completar y revisar con una asesoria.
+privacidad. Llevan apartados entre corchetes que hay que completar **antes de
+dar de alta a la primera clienta real**; mientras el uso sea propio y con
+datos de prueba, quedan como borrador.
+
+**Verifactu no aplica todavia.** El CRM ya guarda el hash encadenado de cada
+factura emitida, asi que el dia que aplique faltaria anadir el QR y el envio a
+la AEAT, no rediseñar el modelo de datos.
 
 ## Estructura
 

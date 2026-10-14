@@ -14,15 +14,15 @@ ofrecen el suyo como adenda estándar que se acepta desde el panel de la cuenta.
 
 ## Lo que hay que verificar
 
-### Turso — región de los datos
+### Turso — región de los datos ✅
 
-**Es lo más importante de esta página.** La base contiene datos de salud. Hay
-que comprobar en el panel de Turso que la base está en una región de la UE
-(por ejemplo Frankfurt o París) y no en Estados Unidos.
+**Verificado el 2026-10-14: la base está en Irlanda**, dentro de la Unión
+Europea. No hay transferencia internacional del almacenamiento, que es lo que
+más importa al contener datos de salud.
 
-Si está fuera de la UE, hay dos opciones: migrarla a una región europea, o
-documentar la transferencia internacional con las cláusulas contractuales tipo
-y una evaluación de impacto. Migrar es mucho más sencillo.
+Si alguna vez se replica o se migra la base, hay que volver a comprobarlo:
+sacarla de la UE obligaría a documentar la transferencia con cláusulas
+contractuales tipo y una evaluación de impacto.
 
 ### Vercel — región de la función
 
@@ -46,7 +46,7 @@ con datos de clientas conviene una cuenta de Google Workspace del negocio.
 
 ## Pendiente
 
-- [ ] Verificar y documentar la región de la base de Turso.
-- [ ] Fijar la región de ejecución en Vercel.
+- [x] Verificar y documentar la región de la base de Turso → Irlanda (UE).
+- [ ] Fijar la región de ejecución en Vercel en Europa.
 - [ ] Aceptar y guardar copia de los tres DPA.
 - [ ] Decidir si el envío de facturas pasa a una cuenta de Workspace.
