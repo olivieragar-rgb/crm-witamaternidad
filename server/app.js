@@ -3,6 +3,9 @@ import { all, get, run, ready } from './db.js';
 import { searchItems } from '../src/search.js';
 import { sendMail, mailerConfigured } from './mailer.js';
 import { invoiceXlsxBase64 } from './invoice-xlsx.js';
+import { invoicePdf } from './invoice-pdf.js';
+import { invoicesRouter, invoiceWithItems, lineAmount } from './invoices.js';
+import { settingsRouter, getSetting } from './settings.js';
 import { securityHeaders, sameOrigin } from './security.js';
 import { attachUser, requireAuth, authRouter, usersRouter, audit } from './auth.js';
 
@@ -39,22 +42,9 @@ function normalize(field, value) {
   if (NUMERIC.has(field)) return Number(value);
   return String(value).trim();
 }
-const round = (n) => Math.round(n * 100) / 100;
-
-function invoiceTotals(items) {
-  let base = 0;
-  let vat = 0;
-  for (const it of items) {
-    const line = Number(it.qty) * Number(it.price);
-    base += line;
-    vat += line * (Number(it.vat) / 100);
-  }
-  return { base: round(base), vat: round(vat), total: round(base + vat) };
-}
-
 // ---- generic CRUD --------------------------------------------------------
 
-function crud({ table, fields, required = [], searchText, orderBy = 'id DESC' }) {
+function crud({ table, fields, required = [], searchText, orderBy = 'id DESC', beforeDelete }) {
   const router = express.Router();
 
   router.get('/', async (req, res, next) => {
@@ -119,7 +109,12 @@ function crud({ table, fields, required = [], searchText, orderBy = 'id DESC' })
 
   router.delete('/:id', async (req, res, next) => {
     try {
-      const info = await run(`DELETE FROM ${table} WHERE id = ?`, [Number(req.params.id)]);
+      const id = Number(req.params.id);
+      if (beforeDelete) {
+        const blocked = await beforeDelete(id);
+        if (blocked) return res.status(409).json({ error: blocked });
+      }
+      const info = await run(`DELETE FROM ${table} WHERE id = ?`, [id]);
       if (info.changes === 0) return res.status(404).json({ error: 'No encontrado' });
       await audit(req, { action: 'delete', entity: table, entityId: req.params.id });
       res.status(204).end();
@@ -137,10 +132,22 @@ app.use(
   '/api/clients',
   crud({
     table: 'clients',
-    fields: ['name', 'email', 'phone', 'service', 'mode', 'dueDate', 'status', 'notes'],
+    fields: [
+      'name', 'email', 'phone', 'service', 'mode', 'dueDate', 'status', 'notes',
+      'taxId', 'address', 'postalCode', 'city', 'province', 'country',
+    ],
     required: ['name'],
     orderBy: 'name',
-    searchText: (c) => `${c.name} ${c.email} ${c.phone} ${c.service} ${c.mode} ${c.status} ${c.notes}`,
+    searchText: (c) =>
+      `${c.name} ${c.email} ${c.phone} ${c.service} ${c.mode} ${c.status} ${c.notes} ${c.taxId} ${c.city}`,
+    // Las facturas hay que conservarlas, asi que una clienta con facturas no
+    // se borra. El bloque de RGPD lo resuelve anonimizando la ficha.
+    beforeDelete: async (id) => {
+      const n = (await get('SELECT COUNT(*) AS n FROM invoices WHERE clientId = ?', [id])).n;
+      return n > 0
+        ? `No se puede borrar: tiene ${n} factura(s). Las facturas hay que conservarlas.`
+        : null;
+    },
   }),
 );
 
@@ -194,122 +201,27 @@ app.use(
   }),
 );
 
-// ---- invoices (items + totals) -------------------------------------------
+// ---- invoices ------------------------------------------------------------
 
-async function invoiceWithItems(id) {
-  const inv = await get(
-    `SELECT i.*, c.name AS clientName, c.email AS clientEmail FROM invoices i
-     LEFT JOIN clients c ON c.id = i.clientId WHERE i.id = ?`,
-    [id],
-  );
-  if (!inv) return null;
-  inv.items = await all('SELECT * FROM invoice_items WHERE invoiceId = ? ORDER BY id', [id]);
-  inv.totals = invoiceTotals(inv.items);
-  return inv;
-}
+app.use('/api/invoices', invoicesRouter);
+app.use('/api/settings', settingsRouter);
 
-async function nextInvoiceNumber() {
-  const year = new Date().getFullYear();
-  const row = await get(`SELECT number FROM invoices WHERE number LIKE ? ORDER BY number DESC LIMIT 1`, [`${year}-%`]);
-  const seq = row ? Number(row.number.split('-')[1]) + 1 : 1;
-  return `${year}-${String(seq).padStart(4, '0')}`;
-}
-
-app.get('/api/invoices', async (req, res, next) => {
-  try {
-    const list = await all(
-      `SELECT i.*, c.name AS clientName FROM invoices i
-       LEFT JOIN clients c ON c.id = i.clientId ORDER BY i.date DESC, i.id DESC`,
-    );
-    for (const inv of list) {
-      const items = await all('SELECT * FROM invoice_items WHERE invoiceId = ?', [inv.id]);
-      inv.totals = invoiceTotals(items);
-    }
-    const q = typeof req.query.q === 'string' ? req.query.q : '';
-    res.json(searchItems(list, q, (i) => `${i.number} ${i.clientName} ${i.status}`));
-  } catch (e) {
-    next(e);
-  }
+/** Datos de los ajustes que la factura no guarda en su propia copia. */
+const pdfExtras = (inv, invoicing) => ({
+  exemptionNote: inv.exemptionNote || invoicing.exemptionNote,
+  paymentDetails: invoicing.paymentDetails,
+  footer: invoicing.footer,
 });
 
-app.get('/api/invoices/:id', async (req, res, next) => {
+app.get('/api/invoices/:id/pdf', async (req, res, next) => {
   try {
     const inv = await invoiceWithItems(Number(req.params.id));
     if (!inv) return res.status(404).json({ error: 'No encontrado' });
-    res.json(inv);
-  } catch (e) {
-    next(e);
-  }
-});
-
-app.post('/api/invoices', async (req, res, next) => {
-  try {
-    const { clientId, date, status = 'Borrador', notes = '', items = [] } = req.body ?? {};
-    const number = req.body?.number?.trim() || (await nextInvoiceNumber());
-    const info = await run('INSERT INTO invoices (number, clientId, date, status, notes) VALUES (?, ?, ?, ?, ?)', [
-      number,
-      clientId ? Number(clientId) : null,
-      String(date || ''),
-      String(status),
-      String(notes),
-    ]);
-    const invId = info.lastInsertRowid;
-    for (const it of items) {
-      await run('INSERT INTO invoice_items (invoiceId, description, qty, price, vat) VALUES (?, ?, ?, ?, ?)', [
-        invId,
-        String(it.description || ''),
-        Number(it.qty) || 1,
-        Number(it.price) || 0,
-        Number(it.vat) || 0,
-      ]);
-    }
-    await audit(req, { action: 'create', entity: 'invoices', entityId: invId });
-    res.status(201).json(await invoiceWithItems(invId));
-  } catch (e) {
-    next(e);
-  }
-});
-
-app.put('/api/invoices/:id', async (req, res, next) => {
-  try {
-    const id = Number(req.params.id);
-    const existing = await get('SELECT * FROM invoices WHERE id = ?', [id]);
-    if (!existing) return res.status(404).json({ error: 'No encontrado' });
-    const { number, clientId, date, status, notes, items } = req.body ?? {};
-    await run('UPDATE invoices SET number = ?, clientId = ?, date = ?, status = ?, notes = ? WHERE id = ?', [
-      number !== undefined ? String(number) : existing.number,
-      clientId !== undefined ? (clientId ? Number(clientId) : null) : existing.clientId,
-      date !== undefined ? String(date) : existing.date,
-      status !== undefined ? String(status) : existing.status,
-      notes !== undefined ? String(notes) : existing.notes,
-      id,
-    ]);
-    if (Array.isArray(items)) {
-      await run('DELETE FROM invoice_items WHERE invoiceId = ?', [id]);
-      for (const it of items) {
-        await run('INSERT INTO invoice_items (invoiceId, description, qty, price, vat) VALUES (?, ?, ?, ?, ?)', [
-          id,
-          String(it.description || ''),
-          Number(it.qty) || 1,
-          Number(it.price) || 0,
-          Number(it.vat) || 0,
-        ]);
-      }
-    }
-    await audit(req, { action: 'update', entity: 'invoices', entityId: id });
-    res.json(await invoiceWithItems(id));
-  } catch (e) {
-    next(e);
-  }
-});
-
-app.delete('/api/invoices/:id', async (req, res, next) => {
-  try {
-    await run('DELETE FROM invoice_items WHERE invoiceId = ?', [Number(req.params.id)]);
-    const info = await run('DELETE FROM invoices WHERE id = ?', [Number(req.params.id)]);
-    if (info.changes === 0) return res.status(404).json({ error: 'No encontrado' });
-    await audit(req, { action: 'delete', entity: 'invoices', entityId: req.params.id });
-    res.status(204).end();
+    const invoicing = await getSetting('invoicing');
+    const pdf = await invoicePdf({ ...inv, ...pdfExtras(inv, invoicing) });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="factura-${inv.number || 'borrador'}.pdf"`);
+    res.send(pdf);
   } catch (e) {
     next(e);
   }
@@ -326,12 +238,13 @@ function invoiceEmailHtml(inv) {
         `<tr><td style="padding:8px;border-bottom:1px solid #ede7df">${esc(it.description)}</td>` +
         `<td align="right" style="padding:8px;border-bottom:1px solid #ede7df">${it.qty}</td>` +
         `<td align="right" style="padding:8px;border-bottom:1px solid #ede7df">${money(it.price)}</td>` +
-        `<td align="right" style="padding:8px;border-bottom:1px solid #ede7df">${money((Number(it.qty) || 0) * (Number(it.price) || 0))}</td></tr>`,
+        `<td align="right" style="padding:8px;border-bottom:1px solid #ede7df">${money(lineAmount(it))}</td></tr>`,
     )
     .join('');
+  const brand = esc(inv.issuer?.name || 'Factura');
   return `<div style="font-family:Arial,sans-serif;color:#2e2a25;max-width:640px">
-    <h2 style="color:#476149">Witamaternidad</h2>
-    <p>Hola ${esc(inv.clientName || '')}, adjuntamos tu factura <strong>${esc(inv.number)}</strong> (${esc(inv.date)}).</p>
+    <h2 style="color:#476149">${brand}</h2>
+    <p>Hola ${esc(inv.client?.name || '')}, adjuntamos tu factura <strong>${esc(inv.number)}</strong> (${esc(inv.date)}).</p>
     <table style="width:100%;border-collapse:collapse;margin:16px 0">
       <tr style="color:#9c9489;font-size:12px;text-transform:uppercase">
         <th align="left" style="padding:8px">Concepto</th><th align="right" style="padding:8px">Cant.</th>
@@ -341,19 +254,20 @@ function invoiceEmailHtml(inv) {
     <p style="text-align:right;font-size:18px"><strong>Total: ${money(inv.totals.total)}</strong>
       <br><span style="font-size:13px;color:#6b6259">Base ${money(inv.totals.base)} · IVA ${money(inv.totals.vat)}</span></p>
     ${inv.notes ? `<p style="color:#6b6259;font-size:13px">${esc(inv.notes)}</p>` : ''}
-    <p style="color:#9c9489;font-size:12px">Hipnoparto · Lactancia · Granada y online</p>
   </div>`;
 }
 
 app.get('/api/mail-status', (req, res) => res.json({ configured: mailerConfigured() }));
 
-// The recipient and the attachment are both derived from stored data, never
-// from the request body: an unauthenticated caller could otherwise use this
-// route to mail an arbitrary file to an arbitrary address from our Gmail.
+// El destinatario y los adjuntos salen todos del servidor, nunca del cuerpo
+// de la peticion: si no, esta ruta seria un relay para enviar lo que sea
+// desde nuestra propia cuenta de correo.
 app.post('/api/invoices/:id/email', async (req, res, next) => {
   try {
     const inv = await invoiceWithItems(Number(req.params.id));
     if (!inv) return res.status(404).json({ error: 'No encontrado' });
+    if (!inv.locked) return res.status(409).json({ error: 'Emite la factura antes de enviarla.' });
+
     const client = inv.clientId ? await get('SELECT email FROM clients WHERE id = ?', [inv.clientId]) : null;
     const to = (client?.email || '').trim();
     if (!to) {
@@ -362,7 +276,10 @@ app.post('/api/invoices/:id/email', async (req, res, next) => {
       });
     }
 
+    const invoicing = await getSetting('invoicing');
+    const pdf = await invoicePdf({ ...inv, ...pdfExtras(inv, invoicing) });
     const attachments = [
+      { filename: `factura-${inv.number}.pdf`, content: pdf, contentType: 'application/pdf' },
       {
         filename: `factura-${inv.number}.xlsx`,
         content: invoiceXlsxBase64(inv),
@@ -371,7 +288,10 @@ app.post('/api/invoices/:id/email', async (req, res, next) => {
       },
     ];
 
-    await sendMail({ to, subject: `Factura ${inv.number} · Witamaternidad`, html: invoiceEmailHtml(inv), attachments });
+    const subject = `Factura ${inv.number}${inv.issuer?.name ? ` · ${inv.issuer.name}` : ''}`;
+    await sendMail({ to, subject, html: invoiceEmailHtml(inv), attachments });
+    // Enviarla la pasa a "Enviada", que es lo que acaba de ocurrir de verdad.
+    if (inv.status === 'Emitida') await run("UPDATE invoices SET status = 'Enviada' WHERE id = ?", [inv.id]);
     await audit(req, { action: 'email', entity: 'invoices', entityId: inv.id, detail: to });
     res.json({ ok: true, to });
   } catch (e) {
@@ -397,20 +317,27 @@ app.get('/api/dashboard', async (req, res, next) => {
        WHERE a.date >= datetime('now') AND a.status = 'Programada'
        ORDER BY a.date LIMIT 5`,
     );
+
+    // Una sola consulta agregada; antes se recorrian las facturas del mes una
+    // a una pidiendo sus lineas por separado.
     const ym = new Date().toISOString().slice(0, 7);
-    const paid = await all("SELECT id FROM invoices WHERE status = 'Pagada' AND date LIKE ?", [`${ym}%`]);
-    let monthRevenue = 0;
-    for (const inv of paid) {
-      const items = await all('SELECT * FROM invoice_items WHERE invoiceId = ?', [inv.id]);
-      monthRevenue += invoiceTotals(items).total;
-    }
-    const pendingInvoices = (await get("SELECT COUNT(*) AS n FROM invoices WHERE status != 'Pagada'")).n;
+    const revenue = await get(
+      `SELECT COALESCE(SUM(it.qty * it.price * (1 - it.discount / 100.0) * (1 + it.vat / 100.0)), 0) AS total
+       FROM invoices i JOIN invoice_items it ON it.invoiceId = i.id
+       WHERE i.status = 'Pagada' AND i.date LIKE ?`,
+      [`${ym}%`],
+    );
+    const pendingInvoices = (
+      await get("SELECT COUNT(*) AS n FROM invoices WHERE status IN ('Emitida', 'Enviada')")
+    ).n;
+    const draftInvoices = (await get("SELECT COUNT(*) AS n FROM invoices WHERE status = 'Borrador'")).n;
 
     res.json({
       activeClients,
       newClients,
       pendingInvoices,
-      monthRevenue: round(monthRevenue),
+      draftInvoices,
+      monthRevenue: Math.round(Number(revenue.total) * 100) / 100,
       upcomingBirths,
       upcomingAppointments,
     });

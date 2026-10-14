@@ -607,9 +607,18 @@ td.empty {
   color: var(--text-muted);
 }
 
-.badge-enviada {
+.badge-enviada,
+.badge-emitida {
   background: #f6edd6;
   color: #997420;
+}
+
+/* Rectificada y anulada: la factura sigue ahi, pero ya no cuenta. */
+.badge-rectificada,
+.badge-anulada {
+  background: var(--bg-warm);
+  color: var(--text-muted);
+  text-decoration: line-through;
 }
 
 /* ---- dashboard ---- */
@@ -848,6 +857,13 @@ td.empty {
   grid-template-columns: 1fr 70px 90px 64px 90px 28px;
   gap: 8px;
   align-items: center;
+}
+
+/* Sin esto, el ancho minimo del input de concepto impide que la columna 1fr
+   se encoja y la fila entera se sale del modal. */
+.items-head > *,
+.item-row > * {
+  min-width: 0;
 }
 
 .items-head {
@@ -1163,4 +1179,183 @@ td.empty {
 .small {
   font-size: 12px;
   line-height: 1.5;
+}
+
+
+/* ---- facturacion ---- */
+.notice {
+  background: var(--terracotta-light);
+  border: 1px solid var(--terracotta);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 14px;
+  color: var(--terracotta-dark);
+  margin: 0 0 16px;
+}
+
+.filters .spacer {
+  margin-left: 14px;
+}
+
+.chip-sm {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.pager button {
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  font-family: var(--font-body);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.pager button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* Un enlace que tiene que parecer uno de los botones de la fila. */
+a.btn {
+  display: inline-block;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--text);
+  font-size: 13px;
+  text-decoration: none;
+  line-height: 1.4;
+}
+
+a.btn:hover {
+  background: var(--bg-warm);
+}
+
+.primary-ghost {
+  border-color: var(--green) !important;
+  color: var(--green-dark) !important;
+  font-weight: 700;
+}
+
+.row-actions button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ---- ficha de factura emitida ---- */
+.locked-note {
+  background: var(--green-light);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--green-dark);
+  margin: 0 0 16px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.detail-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.detail-grid .muted {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-light);
+}
+
+.detail-actions button,
+.detail-actions a.btn {
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+  font-family: var(--font-body);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.grid-table.compact td,
+.grid-table.compact th {
+  padding: 7px 8px;
+  font-size: 13px;
+}
+
+/* La fila de conceptos pasa de cinco columnas a seis al anadir el descuento. */
+.items-head-6,
+.item-row-6 {
+  grid-template-columns: 1fr 70px 90px 70px 70px 90px 32px;
+}
+
+/* ---- datos fiscales de la clienta ---- */
+.fiscal {
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  margin: 16px 0;
+}
+
+.fiscal summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-soft);
+}
+
+.fiscal .form-grid {
+  margin-top: 14px;
+}
+
+/* ---- ajustes ---- */
+.save-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.saved-note {
+  font-size: 13px;
+  color: var(--green);
+}
+
+.panel .form-grid {
+  margin-top: 14px;
+}
+
+@media (max-width: 760px) {
+  .detail-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .items-head-6,
+  .item-row-6 {
+    grid-template-columns: 1fr 55px 70px 55px 55px 75px 28px;
+  }
 }

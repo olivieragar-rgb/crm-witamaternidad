@@ -3,11 +3,16 @@ import { api, fmtDate, gestWeeks } from '../api.js';
 import { searchItems } from '../search.js';
 import { Toolbar, Badge, Modal, Field, EmptyRow } from '../components/ui.jsx';
 
-const EMPTY = { name: '', email: '', phone: '', service: '', mode: '', dueDate: '', status: 'Nuevo contacto', notes: '' };
+const EMPTY = {
+  name: '', email: '', phone: '', service: '', mode: '', dueDate: '',
+  status: 'Nuevo contacto', notes: '',
+  taxId: '', address: '', postalCode: '', city: '', province: '', country: 'España',
+};
+const FISCAL = ['taxId', 'address', 'postalCode', 'city', 'province', 'country'];
 const SERVICES = ['Hipnoparto / Preparación al parto', 'Lactancia', 'Consulta online', 'Otro'];
 const MODES = ['Presencial (Granada)', 'Online'];
 const STATUSES = ['Nuevo contacto', 'Activa', 'Finalizada'];
-const text = (c) => `${c.name} ${c.email} ${c.phone} ${c.service} ${c.mode} ${c.status} ${c.notes}`;
+const text = (c) => `${c.name} ${c.email} ${c.phone} ${c.service} ${c.mode} ${c.status} ${c.notes} ${c.taxId}`;
 
 export default function Clients({ initialFilter }) {
   const [rows, setRows] = useState([]);
@@ -32,7 +37,8 @@ export default function Clients({ initialFilter }) {
     setOpen(true);
   }
   function edit(c) {
-    setForm({ name: c.name, email: c.email, phone: c.phone, service: c.service, mode: c.mode, dueDate: c.dueDate, status: c.status, notes: c.notes });
+    // Las claves que falten (fichas antiguas) caen a los valores por defecto.
+    setForm({ ...EMPTY, ...Object.fromEntries(Object.keys(EMPTY).map((k) => [k, c[k] ?? EMPTY[k]])) });
     setEditingId(c.id);
     setError('');
     setOpen(true);
@@ -49,8 +55,13 @@ export default function Clients({ initialFilter }) {
   }
   async function remove(id) {
     if (!confirm('¿Borrar esta ficha?')) return;
-    await api.remove('clients', id);
-    load();
+    try {
+      await api.remove('clients', id);
+      load();
+    } catch (e) {
+      // El servidor se niega si tiene facturas: hay que conservarlas.
+      alert(e.message);
+    }
   }
 
   return (
@@ -150,6 +161,30 @@ export default function Clients({ initialFilter }) {
               </select>
             </Field>
           </div>
+          <details className="fiscal" open={FISCAL.some((f) => form[f] && form[f] !== 'España')}>
+            <summary>Datos fiscales (para poder facturarle)</summary>
+            <div className="form-grid">
+              <Field label="NIF / DNI">
+                <input value={form.taxId} onChange={set('taxId')} placeholder="12345678Z" />
+              </Field>
+              <Field label="Dirección">
+                <input value={form.address} onChange={set('address')} />
+              </Field>
+              <Field label="Código postal">
+                <input value={form.postalCode} onChange={set('postalCode')} />
+              </Field>
+              <Field label="Población">
+                <input value={form.city} onChange={set('city')} />
+              </Field>
+              <Field label="Provincia">
+                <input value={form.province} onChange={set('province')} />
+              </Field>
+              <Field label="País">
+                <input value={form.country} onChange={set('country')} />
+              </Field>
+            </div>
+          </details>
+
           <Field label="Notas">
             <textarea rows={3} value={form.notes} onChange={set('notes')} placeholder="Semana de embarazo, preferencias, seguimiento…" />
           </Field>

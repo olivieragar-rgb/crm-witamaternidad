@@ -29,7 +29,7 @@ export function Badge({ value }) {
   return <span className={'badge badge-' + key}>{value}</span>;
 }
 
-export function Modal({ title, onClose, children, onSubmit, submitLabel = 'Guardar', error }) {
+export function Modal({ title, onClose, children, onSubmit, submitLabel = 'Guardar', error, hideCancel }) {
   return (
     <div className="modal-backdrop" onMouseDown={onClose}>
       <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
@@ -48,9 +48,12 @@ export function Modal({ title, onClose, children, onSubmit, submitLabel = 'Guard
           <div className="modal-body">{children}</div>
           {error && <p className="error">{error}</p>}
           <div className="modal-foot">
-            <button type="button" onClick={onClose}>
-              Cancelar
-            </button>
+            {/* En una vista de solo lectura no hay nada que cancelar. */}
+            {!hideCancel && (
+              <button type="button" onClick={onClose}>
+                Cancelar
+              </button>
+            )}
             <button type="submit" className="primary">
               {submitLabel}
             </button>

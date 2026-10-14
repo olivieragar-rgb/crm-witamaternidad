@@ -26,7 +26,7 @@ export default function PasswordModal({ onClose }) {
 
   if (done) {
     return (
-      <Modal title="Contraseña cambiada" onClose={onClose} onSubmit={onClose} submitLabel="Entendido">
+      <Modal title="Contraseña cambiada" onClose={onClose} onSubmit={onClose} submitLabel="Entendido" hideCancel>
         <p>
           Hecho. Se han cerrado las demás sesiones abiertas con esta cuenta; en esta puedes seguir
           trabajando.

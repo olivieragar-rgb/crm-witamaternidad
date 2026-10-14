@@ -54,6 +54,22 @@ export const api = {
   me: () => req('GET', '/api/auth/me', undefined, { expireOn401: false }),
   changePassword: (body) => req('POST', '/api/auth/password', body),
   emailInvoice: (id) => req('POST', `/api/invoices/${id}/email`, {}),
+
+  // Facturas: el listado viene filtrado y paginado del servidor.
+  invoices: (params = {}) => {
+    const qs = new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v !== '' && v !== undefined && v !== null),
+    ).toString();
+    return req('GET', `/api/invoices${qs ? `?${qs}` : ''}`);
+  },
+  issueInvoice: (id) => req('POST', `/api/invoices/${id}/issue`, {}),
+  invoiceStatus: (id, body) => req('POST', `/api/invoices/${id}/status`, body),
+  rectifyInvoice: (id, body) => req('POST', `/api/invoices/${id}/rectify`, body),
+  voidInvoice: (id, body) => req('POST', `/api/invoices/${id}/void`, body),
+  invoicePdfUrl: (id) => `/api/invoices/${id}/pdf`,
+
+  settings: () => req('GET', '/api/settings'),
+  saveSettings: (key, body) => req('PUT', `/api/settings/${key}`, body),
 };
 
 export const eur = (n) =>

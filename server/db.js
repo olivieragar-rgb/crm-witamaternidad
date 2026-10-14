@@ -148,6 +148,53 @@ const SCHEMA = `
     ip TEXT NOT NULL DEFAULT '', userAgent TEXT NOT NULL DEFAULT ''
   );
   CREATE INDEX IF NOT EXISTS idx_audit_at ON audit_log (at DESC);
+  CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL DEFAULT '{}',
+    updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+`;
+
+// Columnas e indices que se anadieron despues de la primera version. Se
+// aplican con ALTER TABLE y no recreando las tablas, porque la base de
+// produccion ya tiene datos reales.
+const COLUMNS = [
+  ['clients', 'taxId', "TEXT NOT NULL DEFAULT ''"],
+  ['clients', 'address', "TEXT NOT NULL DEFAULT ''"],
+  ['clients', 'postalCode', "TEXT NOT NULL DEFAULT ''"],
+  ['clients', 'city', "TEXT NOT NULL DEFAULT ''"],
+  ['clients', 'province', "TEXT NOT NULL DEFAULT ''"],
+  ['clients', 'country', "TEXT NOT NULL DEFAULT 'España'"],
+
+  // El numero se compone de serie + ano fiscal + correlativo, y el correlativo
+  // reinicia cada ano, asi que la clave unica son los tres juntos.
+  ['invoices', 'series', "TEXT NOT NULL DEFAULT ''"],
+  ['invoices', 'fiscalYear', 'INTEGER'],
+  ['invoices', 'seq', 'INTEGER'],
+  ['invoices', 'issuedAt', 'TEXT'],
+  ['invoices', 'dueDate', "TEXT NOT NULL DEFAULT ''"],
+  ['invoices', 'paidAt', "TEXT NOT NULL DEFAULT ''"],
+  ['invoices', 'paymentMethod', "TEXT NOT NULL DEFAULT ''"],
+  ['invoices', 'irpfRate', 'REAL NOT NULL DEFAULT 0'],
+  ['invoices', 'exemptionNote', "TEXT NOT NULL DEFAULT ''"],
+  ['invoices', 'rectifiesId', 'INTEGER'],
+  ['invoices', 'rectifyReason', "TEXT NOT NULL DEFAULT ''"],
+  ['invoices', 'issuerSnapshot', "TEXT NOT NULL DEFAULT ''"],
+  ['invoices', 'clientSnapshot', "TEXT NOT NULL DEFAULT ''"],
+  ['invoices', 'hash', "TEXT NOT NULL DEFAULT ''"],
+  ['invoices', 'hashPrev', "TEXT NOT NULL DEFAULT ''"],
+
+  ['invoice_items', 'discount', 'REAL NOT NULL DEFAULT 0'],
+];
+
+const INDEXES = `
+  CREATE INDEX IF NOT EXISTS idx_invoices_date ON invoices (date DESC);
+  CREATE INDEX IF NOT EXISTS idx_invoices_client ON invoices (clientId);
+  CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices (status);
+  CREATE INDEX IF NOT EXISTS idx_items_invoice ON invoice_items (invoiceId);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_invoices_number ON invoices (number) WHERE number <> '';
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_invoices_series_seq
+    ON invoices (series, fiscalYear, seq) WHERE seq IS NOT NULL;
 `;
 
 let readyPromise;
@@ -158,9 +205,43 @@ export function ready() {
 
 async function init() {
   await (await impl()).exec(SCHEMA);
+  await migrate();
   // Los datos de ejemplo inventan nombres y telefonos de clientas: solo en
   // local. En produccion la base arranca vacia y la rellena su usuaria.
   if (!useTurso && !process.env.CRM_DB_FILE) await seed();
+}
+
+async function migrate() {
+  for (const [table, column, ddl] of COLUMNS) {
+    const cols = await all(`PRAGMA table_info(${table})`);
+    if (cols.some((c) => c.name === column)) continue;
+    await run(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
+  }
+  await (await impl()).exec(INDEXES);
+  // La primera version de la columna se creo con el pais sin tilde.
+  await run("UPDATE clients SET country = 'España' WHERE country = 'Espana'");
+  await backfillInvoiceSeries();
+}
+
+// Las facturas anteriores a la serie y el correlativo traian el numero en un
+// campo de texto con formato AAAA-NNNN. Las ya emitidas conservan exactamente
+// ese numero y se les reconstruye ano y correlativo. Los borradores lo
+// pierden: ahora el numero se asigna al emitir y no al crear.
+async function backfillInvoiceSeries() {
+  const pending = await all('SELECT id, number, date, status FROM invoices WHERE seq IS NULL');
+  for (const inv of pending) {
+    const m = /^(\d{4})-(\d{4})$/.exec(String(inv.number || ''));
+    if (inv.status === 'Borrador' || !m) {
+      await run("UPDATE invoices SET number = '' WHERE id = ?", [inv.id]);
+      continue;
+    }
+    await run('UPDATE invoices SET fiscalYear = ?, seq = ?, issuedAt = ? WHERE id = ?', [
+      Number(m[1]),
+      Number(m[2]),
+      inv.date || null,
+      inv.id,
+    ]);
+  }
 }
 
 async function seed() {

@@ -1,152 +1,126 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { api, eur, fmtDate } from '../api.js';
-import { searchItems } from '../search.js';
 import { Toolbar, Badge, Modal, Field, EmptyRow } from '../components/ui.jsx';
 
-const STATUSES = ['Borrador', 'Enviada', 'Pagada'];
-const escapeHtml = (s) =>
-  String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-const blankItem = () => ({ description: '', qty: 1, price: 0, vat: 0 });
-const EMPTY = () => ({ number: '', clientId: '', date: new Date().toISOString().slice(0, 10), status: 'Borrador', notes: '', items: [blankItem()] });
-const text = (i) => `${i.number} ${i.clientName} ${i.status}`;
+const PAYMENT_STATES = ['Emitida', 'Enviada', 'Pagada'];
+const FILTERS = [
+  { value: '', label: 'Todas' },
+  { value: 'Borrador', label: 'Borradores' },
+  { value: 'pendientes', label: 'Pendientes de cobro' },
+  { value: 'Pagada', label: 'Pagadas' },
+  { value: 'Rectificada', label: 'Rectificadas' },
+  { value: 'Anulada', label: 'Anuladas' },
+];
+const MONTHS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
+const monthLabel = (m) => {
+  const name = new Date(2000, Number(m) - 1, 1).toLocaleDateString('es-ES', { month: 'short' });
+  return name.charAt(0).toUpperCase() + name.slice(1).replace('.', '');
+};
 
-function totals(items) {
+const blankItem = () => ({ description: '', qty: 1, price: 0, vat: 0, discount: 0 });
+const today = () => new Date().toISOString().slice(0, 10);
+const EMPTY = (invoicing) => ({
+  clientId: '',
+  date: today(),
+  dueDate: '',
+  paymentMethod: '',
+  irpfRate: invoicing?.irpfRate ?? 0,
+  exemptionNote: '',
+  notes: '',
+  items: [{ ...blankItem(), vat: invoicing?.vatRate ?? 0 }],
+});
+
+const num = (v) => Number(v) || 0;
+const lineAmount = (it) => num(it.qty) * num(it.price) * (1 - num(it.discount) / 100);
+
+function totals(items, irpfRate) {
   let base = 0;
   let vat = 0;
   for (const it of items) {
-    const line = (Number(it.qty) || 0) * (Number(it.price) || 0);
+    const line = lineAmount(it);
     base += line;
-    vat += line * ((Number(it.vat) || 0) / 100);
+    vat += line * (num(it.vat) / 100);
   }
+  const irpf = base * (num(irpfRate) / 100);
   const r = (n) => Math.round(n * 100) / 100;
-  return { base: r(base), vat: r(vat), total: r(base + vat) };
+  return { base: r(base), vat: r(vat), irpf: r(irpf), total: r(base + vat - irpf) };
 }
 
 export default function Invoices({ initialFilter }) {
-  const [rows, setRows] = useState([]);
+  const [data, setData] = useState({ rows: [], total: 0, years: [], page: 1, pageSize: 50 });
   const [clients, setClients] = useState([]);
   const [services, setServices] = useState([]);
+  const [settings, setSettings] = useState(null);
+
   const [query, setQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState(initialFilter?.status || '');
-  const [months, setMonths] = useState([]); // 'YYYY-MM' seleccionados; vacío = todos
+  const [status, setStatus] = useState(initialFilter?.status || '');
+  const [year, setYear] = useState('');
+  const [month, setMonth] = useState('');
+  const [page, setPage] = useState(1);
+
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState(EMPTY());
+  const [form, setForm] = useState(EMPTY(null));
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState('');
+  const [detail, setDetail] = useState(null); // factura emitida que se está mirando
 
-  const load = () => api.list('invoices').then(setRows);
+  const load = useCallback(
+    () => api.invoices({ q: query, status, year, month, page }).then(setData),
+    [query, status, year, month, page],
+  );
   useEffect(() => {
     load();
+  }, [load]);
+  useEffect(() => {
     api.list('clients').then(setClients);
     api.list('services').then(setServices);
+    api.settings().then(setSettings);
   }, []);
 
-  // Meses disponibles (YYYY-MM) a partir de las fechas, más recientes primero.
-  const availableMonths = [...new Set(rows.map((i) => (i.date || '').slice(0, 7)).filter(Boolean))].sort().reverse();
-  const monthLabel = (ym) => {
-    const [y, m] = ym.split('-');
-    const name = new Date(Number(y), Number(m) - 1, 1).toLocaleDateString('es-ES', { month: 'short', year: 'numeric' });
-    return name.charAt(0).toUpperCase() + name.slice(1);
+  // Al cambiar un filtro se vuelve a la primera página: si no, la lista sale
+  // vacía porque la página 3 del filtro anterior ya no existe.
+  const filterSetter = (set) => (value) => {
+    set(value);
+    setPage(1);
   };
-  const toggleMonth = (ym) => setMonths((ms) => (ms.includes(ym) ? ms.filter((x) => x !== ym) : [...ms, ym]));
 
-  const bySearch = searchItems(rows, query, text);
-  const visible = bySearch.filter((i) => {
-    if (statusFilter === 'pendientes' && i.status === 'Pagada') return false;
-    if (statusFilter && statusFilter !== 'pendientes' && i.status !== statusFilter) return false;
-    if (months.length && !months.includes((i.date || '').slice(0, 7))) return false;
-    return true;
-  });
   const set = (f) => (e) => setForm({ ...form, [f]: e.target.value });
-
-  async function exportPdf(row) {
-    const inv = await api.get('invoices', row.id);
-    const win = window.open('', '_blank');
-    if (!win) {
-      alert('Permite las ventanas emergentes para exportar el PDF.');
-      return;
-    }
-    const rowsHtml = inv.items
-      .map(
-        (it) => `<tr>
-          <td>${escapeHtml(it.description)}</td>
-          <td class="n">${it.qty}</td>
-          <td class="n">${eur(it.price)}</td>
-          <td class="n">${it.vat}%</td>
-          <td class="n">${eur((Number(it.qty) || 0) * (Number(it.price) || 0))}</td>
-        </tr>`,
-      )
-      .join('');
-    win.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8">
-      <title>Factura ${escapeHtml(inv.number)}</title>
-      <style>
-        @import url('https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Playfair+Display:wght@600&display=swap');
-        * { box-sizing: border-box; }
-        body { font-family: 'Lato', sans-serif; color: #2e2a25; max-width: 720px; margin: 40px auto; padding: 0 24px; }
-        header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #5b7f5e; padding-bottom: 16px; margin-bottom: 24px; }
-        .brand { font-family: 'Playfair Display', serif; font-size: 26px; color: #476149; }
-        .brand small { display:block; font-family:'Lato'; font-size:12px; color:#9c9489; font-weight:400; }
-        h1 { font-family: 'Playfair Display', serif; font-size: 22px; margin: 0; }
-        .meta { text-align: right; font-size: 14px; color: #6b6259; }
-        table { width: 100%; border-collapse: collapse; margin: 24px 0; }
-        th { text-align: left; font-size: 12px; text-transform: uppercase; color: #9c9489; border-bottom: 1px solid #e5ddd4; padding: 8px 6px; }
-        td { padding: 10px 6px; border-bottom: 1px solid #ede7df; font-size: 14px; }
-        .n { text-align: right; }
-        .totals { margin-left: auto; width: 260px; }
-        .totals div { display: flex; justify-content: space-between; padding: 4px 6px; font-size: 14px; }
-        .totals .grand { border-top: 2px solid #5b7f5e; margin-top: 4px; padding-top: 8px; font-size: 18px; font-weight: 700; color: #476149; }
-        .notes { margin-top: 28px; font-size: 13px; color: #6b6259; }
-        @media print { body { margin: 0; } }
-      </style></head><body>
-      <header>
-        <div class="brand">Witamaternidad<small>Hipnoparto · Lactancia · Granada</small></div>
-        <div class="meta"><strong>Factura ${escapeHtml(inv.number)}</strong><br>${fmtDate(inv.date)}<br>Estado: ${escapeHtml(inv.status)}</div>
-      </header>
-      <h1>${escapeHtml(inv.clientName || 'Clienta')}</h1>
-      <table>
-        <thead><tr><th>Concepto</th><th class="n">Cant.</th><th class="n">Precio</th><th class="n">IVA</th><th class="n">Importe</th></tr></thead>
-        <tbody>${rowsHtml}</tbody>
-      </table>
-      <div class="totals">
-        <div><span>Base</span><span>${eur(inv.totals.base)}</span></div>
-        <div><span>IVA</span><span>${eur(inv.totals.vat)}</span></div>
-        <div class="grand"><span>Total</span><span>${eur(inv.totals.total)}</span></div>
-      </div>
-      ${inv.notes ? `<div class="notes">${escapeHtml(inv.notes)}</div>` : ''}
-      </body></html>`);
-    win.document.close();
-
-    // El print se dispara desde aquí y no con un <script> inline dentro de la
-    // ventana: así la política de seguridad no tiene que permitir scripts
-    // inline en ningún sitio.
-    const print = () => {
-      win.focus();
-      win.print();
-    };
-    if (win.document.readyState === 'complete') print();
-    else win.addEventListener('load', print, { once: true });
-  }
+  const rows = data.rows;
+  const pages = Math.ceil(data.total / data.pageSize) || 1;
 
   function newRow() {
-    setForm(EMPTY());
+    setForm(EMPTY(settings?.invoicing));
     setEditingId(null);
     setError('');
     setOpen(true);
   }
+
   async function edit(row) {
     const inv = await api.get('invoices', row.id);
+    if (inv.locked) return setDetail(inv);
     setForm({
-      number: inv.number,
       clientId: inv.clientId || '',
       date: inv.date,
-      status: inv.status,
+      dueDate: inv.dueDate || '',
+      paymentMethod: inv.paymentMethod || '',
+      irpfRate: inv.irpfRate || 0,
+      exemptionNote: inv.exemptionNote || '',
       notes: inv.notes,
-      items: inv.items.length ? inv.items.map(({ description, qty, price, vat }) => ({ description, qty, price, vat })) : [blankItem()],
+      items: inv.items.length
+        ? inv.items.map(({ description, qty, price, vat, discount }) => ({
+            description,
+            qty,
+            price,
+            vat,
+            discount,
+          }))
+        : [blankItem()],
     });
     setEditingId(inv.id);
     setError('');
     setOpen(true);
   }
+
   async function save() {
     try {
       if (editingId) await api.update('invoices', editingId, form);
@@ -157,37 +131,119 @@ export default function Invoices({ initialFilter }) {
       setError(e.message);
     }
   }
-  async function remove(id) {
-    if (!confirm('¿Borrar esta factura?')) return;
-    await api.remove('invoices', id);
-    load();
+
+  async function remove(row) {
+    if (!confirm('¿Borrar este borrador?')) return;
+    try {
+      await api.remove('invoices', row.id);
+      load();
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  async function issue(row) {
+    if (
+      !confirm(
+        'Al emitir, la factura toma número definitivo y deja de poder editarse.\n' +
+          'Los errores se corrigen después con una rectificativa.\n\n¿Emitir?',
+      )
+    ) {
+      return;
+    }
+    try {
+      const inv = await api.issueInvoice(row.id);
+      load();
+      setDetail(inv);
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  async function changeStatus(row, next) {
+    try {
+      await api.invoiceStatus(row.id, { status: next });
+      load();
+      if (detail?.id === row.id) setDetail(await api.get('invoices', row.id));
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  async function rectify(row) {
+    const reason = prompt('Motivo de la rectificación:');
+    if (reason === null) return;
+    if (!reason.trim()) return alert('El motivo es obligatorio.');
+    try {
+      const rect = await api.rectifyInvoice(row.id, { reason });
+      setDetail(null);
+      load();
+      alert(
+        `Creada la rectificativa como borrador. Ajusta los importes y emítela:\n` +
+          `al emitirla, la factura ${row.number} quedará marcada como rectificada.`,
+      );
+      edit(rect);
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  async function voidInvoice(row) {
+    const reason = prompt('Motivo de la anulación:');
+    if (reason === null) return;
+    if (!reason.trim()) return alert('El motivo es obligatorio.');
+    try {
+      await api.voidInvoice(row.id, { reason });
+      setDetail(null);
+      load();
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  async function emailInvoice(row) {
+    const inv = await api.get('invoices', row.id);
+    if (!inv.clientEmail) {
+      return alert('La clienta no tiene email en su ficha. Añádelo en Clientas y vuelve a intentarlo.');
+    }
+    if (!confirm(`¿Enviar la factura ${inv.number} a ${inv.clientEmail}?\nSe adjunta el PDF y el Excel.`)) return;
+    try {
+      const res = await api.emailInvoice(row.id);
+      alert(`Factura enviada a ${res.to}`);
+      load();
+    } catch (e) {
+      alert(e.message);
+    }
   }
 
   async function exportExcel() {
     const XLSX = await import('xlsx'); // carga diferida: solo al exportar
-    // Hoja resumen con las facturas visibles + hoja de detalle con sus líneas.
-    const summary = visible.map((i) => ({
-      Nº: i.number,
+    const summary = rows.map((i) => ({
+      Nº: i.number || '(borrador)',
       Fecha: i.date,
+      Vencimiento: i.dueDate || '',
+      Cobrada: i.paidAt || '',
       Clienta: i.clientName || '',
       Estado: i.status,
       Base: i.totals?.base ?? 0,
       IVA: i.totals?.vat ?? 0,
+      IRPF: i.totals?.irpf ?? 0,
       Total: i.totals?.total ?? 0,
     }));
 
     const detailRows = [];
-    for (const row of visible) {
+    for (const row of rows) {
       const inv = await api.get('invoices', row.id);
       for (const it of inv.items) {
         detailRows.push({
-          Nº: inv.number,
+          Nº: inv.number || '(borrador)',
           Clienta: inv.clientName || '',
           Concepto: it.description,
           Cantidad: it.qty,
           Precio: it.price,
+          'Dto %': it.discount,
           'IVA %': it.vat,
-          Importe: (Number(it.qty) || 0) * (Number(it.price) || 0),
+          Importe: lineAmount(it),
         });
       }
     }
@@ -195,28 +251,10 @@ export default function Invoices({ initialFilter }) {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summary), 'Facturas');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(detailRows), 'Líneas');
-    const stamp = new Date().toISOString().slice(0, 10);
-    XLSX.writeFile(wb, `facturas-witamaternidad-${stamp}.xlsx`);
+    XLSX.writeFile(wb, `facturas-${today()}.xlsx`);
   }
 
-  // El destinatario y el adjunto los decide el servidor a partir de la ficha
-  // de la clienta; aquí solo confirmamos a quién va.
-  async function emailInvoice(row) {
-    const inv = await api.get('invoices', row.id);
-    if (!inv.clientEmail) {
-      alert('La clienta no tiene email en su ficha. Añádelo en Clientas y vuelve a intentarlo.');
-      return;
-    }
-    if (!confirm(`¿Enviar la factura ${inv.number} a ${inv.clientEmail}?`)) return;
-    try {
-      const data = await api.emailInvoice(row.id);
-      alert(`Factura enviada a ${data.to}`);
-    } catch (e) {
-      alert(e.message);
-    }
-  }
-
-  // ---- line item editing ----
+  // ---- líneas ----
   const setItem = (idx, field) => (e) => {
     const items = form.items.map((it, i) => (i === idx ? { ...it, [field]: e.target.value } : it));
     setForm({ ...form, items });
@@ -230,41 +268,70 @@ export default function Invoices({ initialFilter }) {
     setForm({ ...form, items });
   };
 
-  const t = totals(form.items);
+  const t = totals(form.items, form.irpfRate);
+  const issuerReady = settings && settings.issuer.name && settings.issuer.taxId;
 
   return (
     <section>
-      <Toolbar title="Facturas" query={query} setQuery={setQuery} onNew={newRow} newLabel="Nueva factura" />
+      <Toolbar
+        title="Facturas"
+        query={query}
+        setQuery={filterSetter(setQuery)}
+        onNew={newRow}
+        newLabel="Nueva factura"
+      />
+
+      {settings && !issuerReady && (
+        <p className="notice">
+          Faltan tus datos fiscales, así que todavía no puedes emitir facturas. Complétalos en{' '}
+          <strong>Ajustes</strong>.
+        </p>
+      )}
 
       <div className="filters">
         <span className="muted">Estado:</span>
-        {['', 'pendientes', 'Borrador', 'Enviada', 'Pagada'].map((s) => (
+        {FILTERS.map((f) => (
           <button
-            key={s || 'todas'}
-            className={'chip' + (statusFilter === s ? ' active' : '')}
-            onClick={() => setStatusFilter(s)}
+            key={f.value || 'todas'}
+            className={'chip' + (status === f.value ? ' active' : '')}
+            onClick={() => filterSetter(setStatus)(f.value)}
           >
-            {s === '' ? 'Todas' : s === 'pendientes' ? 'Pendientes' : s}
+            {f.label}
           </button>
         ))}
-        <button className="export" onClick={exportExcel} disabled={visible.length === 0} title="Descargar las facturas filtradas en Excel">
-          ↓ Exportar Excel ({visible.length})
+        <button className="export" onClick={exportExcel} disabled={rows.length === 0}>
+          ↓ Exportar Excel ({rows.length})
         </button>
       </div>
 
-      {availableMonths.length > 1 && (
-        <div className="filters">
-          <span className="muted">Mes:</span>
-          <button className={'chip' + (months.length === 0 ? ' active' : '')} onClick={() => setMonths([])}>
-            Todos
+      <div className="filters">
+        <span className="muted">Año:</span>
+        <button className={'chip' + (year === '' ? ' active' : '')} onClick={() => filterSetter(setYear)('')}>
+          Todos
+        </button>
+        {data.years.map((y) => (
+          <button
+            key={y}
+            className={'chip' + (year === y ? ' active' : '')}
+            onClick={() => filterSetter(setYear)(y)}
+          >
+            {y}
           </button>
-          {availableMonths.map((ym) => (
-            <button key={ym} className={'chip' + (months.includes(ym) ? ' active' : '')} onClick={() => toggleMonth(ym)}>
-              {monthLabel(ym)}
-            </button>
-          ))}
-        </div>
-      )}
+        ))}
+        <span className="muted spacer">Mes:</span>
+        <button className={'chip' + (month === '' ? ' active' : '')} onClick={() => filterSetter(setMonth)('')}>
+          Todos
+        </button>
+        {MONTHS.map((m) => (
+          <button
+            key={m}
+            className={'chip chip-sm' + (month === m ? ' active' : '')}
+            onClick={() => filterSetter(setMonth)(m)}
+          >
+            {monthLabel(m)}
+          </button>
+        ))}
+      </div>
 
       <table className="grid-table">
         <thead>
@@ -278,11 +345,9 @@ export default function Invoices({ initialFilter }) {
           </tr>
         </thead>
         <tbody>
-          {visible.map((i) => (
+          {rows.map((i) => (
             <tr key={i.id}>
-              <td>
-                <strong>{i.number}</strong>
-              </td>
+              <td>{i.number ? <strong>{i.number}</strong> : <span className="muted">Sin emitir</span>}</td>
               <td className="muted">{fmtDate(i.date)}</td>
               <td>{i.clientName || <span className="muted">—</span>}</td>
               <td>
@@ -290,37 +355,73 @@ export default function Invoices({ initialFilter }) {
               </td>
               <td className="num">{eur(i.totals?.total)}</td>
               <td className="row-actions">
-                <button onClick={() => exportPdf(i)}>PDF</button>
-                <button onClick={() => emailInvoice(i)}>Email</button>
-                <button onClick={() => edit(i)}>Editar</button>
-                <button className="danger" onClick={() => remove(i.id)}>
-                  Borrar
-                </button>
+                {i.locked ? (
+                  <>
+                    <a className="btn" href={api.invoicePdfUrl(i.id)} target="_blank" rel="noreferrer">
+                      PDF
+                    </a>
+                    {PAYMENT_STATES.includes(i.status) && <button onClick={() => emailInvoice(i)}>Email</button>}
+                    <button onClick={() => edit(i)}>Ver</button>
+                  </>
+                ) : (
+                  <>
+                    <button className="primary-ghost" onClick={() => issue(i)} disabled={!issuerReady}>
+                      Emitir
+                    </button>
+                    <button onClick={() => edit(i)}>Editar</button>
+                    <button className="danger" onClick={() => remove(i)}>
+                      Borrar
+                    </button>
+                  </>
+                )}
               </td>
             </tr>
           ))}
-          {visible.length === 0 && <EmptyRow colSpan={6} />}
+          {rows.length === 0 && <EmptyRow colSpan={6} />}
         </tbody>
       </table>
 
+      {pages > 1 && (
+        <div className="pager">
+          <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}>
+            ← Anterior
+          </button>
+          <span className="muted">
+            Página {page} de {pages} · {data.total} facturas
+          </span>
+          <button onClick={() => setPage((p) => Math.min(pages, p + 1))} disabled={page >= pages}>
+            Siguiente →
+          </button>
+        </div>
+      )}
+
+      {detail && (
+        <InvoiceDetail
+          inv={detail}
+          onClose={() => setDetail(null)}
+          onStatus={(s) => changeStatus(detail, s)}
+          onRectify={() => rectify(detail)}
+          onVoid={() => voidInvoice(detail)}
+          onEmail={() => emailInvoice(detail)}
+        />
+      )}
+
       {open && (
         <Modal
-          title={editingId ? `Factura ${form.number}` : 'Nueva factura'}
+          title={editingId ? 'Editar borrador' : 'Nueva factura'}
           onClose={() => setOpen(false)}
           onSubmit={save}
           error={error}
-          submitLabel={editingId ? 'Guardar' : 'Crear factura'}
+          submitLabel={editingId ? 'Guardar borrador' : 'Crear borrador'}
         >
           <div className="form-grid">
-            <Field label="Nº (auto si vacío)">
-              <input value={form.number} onChange={set('number')} placeholder="2026-0003" />
-            </Field>
             <Field label="Clienta">
               <select value={form.clientId} onChange={set('clientId')}>
                 <option value="">—</option>
                 {clients.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
+                    {c.taxId ? '' : ' (sin NIF)'}
                   </option>
                 ))}
               </select>
@@ -328,26 +429,33 @@ export default function Invoices({ initialFilter }) {
             <Field label="Fecha">
               <input type="date" value={form.date} onChange={set('date')} />
             </Field>
-            <Field label="Estado">
-              <select value={form.status} onChange={set('status')}>
-                {STATUSES.map((s) => (
-                  <option key={s}>{s}</option>
-                ))}
-              </select>
+            <Field label="Vencimiento">
+              <input type="date" value={form.dueDate} onChange={set('dueDate')} />
+            </Field>
+            <Field label="Forma de pago">
+              <input
+                value={form.paymentMethod}
+                onChange={set('paymentMethod')}
+                placeholder="Transferencia, Bizum…"
+              />
+            </Field>
+            <Field label="Retención IRPF %">
+              <input type="number" step="0.01" min="0" max="100" value={form.irpfRate} onChange={set('irpfRate')} />
             </Field>
           </div>
 
           <div className="items">
-            <div className="items-head">
+            <div className="items-head items-head-6">
               <span>Concepto</span>
               <span className="num">Cant.</span>
               <span className="num">Precio</span>
+              <span className="num">Dto %</span>
               <span className="num">IVA %</span>
               <span className="num">Importe</span>
               <span></span>
             </div>
             {form.items.map((it, idx) => (
-              <div className="item-row" key={idx}>
+              <div className="item-row item-row-6" key={idx}>
                 <div className="concept">
                   <input value={it.description} onChange={setItem(idx, 'description')} placeholder="Concepto" />
                   <select className="svc-pick" value="" onChange={pickService(idx)}>
@@ -360,9 +468,25 @@ export default function Invoices({ initialFilter }) {
                   </select>
                 </div>
                 <input className="num" type="number" step="0.5" min="0" value={it.qty} onChange={setItem(idx, 'qty')} />
-                <input className="num" type="number" step="0.01" min="0" value={it.price} onChange={setItem(idx, 'price')} />
+                <input
+                  className="num"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={it.price}
+                  onChange={setItem(idx, 'price')}
+                />
+                <input
+                  className="num"
+                  type="number"
+                  step="1"
+                  min="0"
+                  max="100"
+                  value={it.discount}
+                  onChange={setItem(idx, 'discount')}
+                />
                 <input className="num" type="number" step="1" min="0" value={it.vat} onChange={setItem(idx, 'vat')} />
-                <span className="num line-total">{eur((Number(it.qty) || 0) * (Number(it.price) || 0))}</span>
+                <span className="num line-total">{eur(lineAmount(it))}</span>
                 <button type="button" className="icon" onClick={() => removeItem(idx)} aria-label="Quitar línea">
                   ✕
                 </button>
@@ -382,17 +506,133 @@ export default function Invoices({ initialFilter }) {
               <span>IVA</span>
               <strong>{eur(t.vat)}</strong>
             </div>
+            {t.irpf > 0 && (
+              <div>
+                <span>Retención IRPF</span>
+                <strong>−{eur(t.irpf)}</strong>
+              </div>
+            )}
             <div className="grand">
               <span>Total</span>
               <strong>{eur(t.total)}</strong>
             </div>
           </div>
 
+          {t.vat === 0 && (
+            <Field label="Nota de exención de IVA (sale en la factura)">
+              <textarea
+                rows={2}
+                value={form.exemptionNote}
+                onChange={set('exemptionNote')}
+                placeholder={settings?.invoicing.exemptionNote || ''}
+              />
+            </Field>
+          )}
+
           <Field label="Notas">
-            <textarea rows={2} value={form.notes} onChange={set('notes')} placeholder="Servicios sanitarios exentos de IVA, forma de pago…" />
+            <textarea rows={2} value={form.notes} onChange={set('notes')} />
           </Field>
         </Modal>
       )}
     </section>
+  );
+}
+
+/** Ficha de una factura ya emitida: se mira, no se edita. */
+function InvoiceDetail({ inv, onClose, onStatus, onRectify, onVoid, onEmail }) {
+  const closed = inv.status === 'Rectificada' || inv.status === 'Anulada';
+  return (
+    <Modal title={`Factura ${inv.number}`} onClose={onClose} onSubmit={onClose} submitLabel="Cerrar" hideCancel>
+      <p className="locked-note">
+        Esta factura está emitida, así que no se puede modificar. Si hay un error, emite una rectificativa.
+      </p>
+
+      <div className="detail-grid">
+        <div>
+          <span className="muted">Clienta</span>
+          <strong>{inv.client?.name || '—'}</strong>
+          {inv.client?.taxId && <span className="muted">NIF {inv.client.taxId}</span>}
+        </div>
+        <div>
+          <span className="muted">Fecha</span>
+          <strong>{fmtDate(inv.date)}</strong>
+          {inv.dueDate && <span className="muted">Vence {fmtDate(inv.dueDate)}</span>}
+        </div>
+        <div>
+          <span className="muted">Estado</span>
+          <Badge value={inv.status} />
+          {inv.paidAt && <span className="muted">Cobrada {fmtDate(inv.paidAt)}</span>}
+        </div>
+        <div>
+          <span className="muted">Total</span>
+          <strong>{eur(inv.totals.total)}</strong>
+          <span className="muted">
+            Base {eur(inv.totals.base)} · IVA {eur(inv.totals.vat)}
+            {inv.totals.irpf > 0 && ` · IRPF −${eur(inv.totals.irpf)}`}
+          </span>
+        </div>
+      </div>
+
+      {inv.rectifies && (
+        <p className="muted small">
+          Rectifica a la factura <strong>{inv.rectifies.number}</strong>. Motivo: {inv.rectifyReason}
+        </p>
+      )}
+      {inv.rectifiedBy && (
+        <p className="muted small">
+          Rectificada por la factura <strong>{inv.rectifiedBy.number}</strong>.
+        </p>
+      )}
+      {inv.status === 'Anulada' && <p className="muted small">Anulada. Motivo: {inv.rectifyReason}</p>}
+
+      <table className="grid-table compact">
+        <thead>
+          <tr>
+            <th>Concepto</th>
+            <th className="num">Cant.</th>
+            <th className="num">Precio</th>
+            <th className="num">Dto.</th>
+            <th className="num">IVA</th>
+            <th className="num">Importe</th>
+          </tr>
+        </thead>
+        <tbody>
+          {inv.items.map((it) => (
+            <tr key={it.id}>
+              <td>{it.description}</td>
+              <td className="num">{it.qty}</td>
+              <td className="num">{eur(it.price)}</td>
+              <td className="num">{it.discount ? `${it.discount}%` : '—'}</td>
+              <td className="num">{it.vat}%</td>
+              <td className="num">{eur(lineAmount(it))}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div className="detail-actions">
+        <a className="btn" href={api.invoicePdfUrl(inv.id)} target="_blank" rel="noreferrer">
+          Ver PDF
+        </a>
+        {!closed && (
+          <>
+            <button type="button" onClick={onEmail}>
+              Enviar por email
+            </button>
+            {PAYMENT_STATES.filter((s) => s !== inv.status).map((s) => (
+              <button key={s} type="button" onClick={() => onStatus(s)}>
+                Marcar {s.toLowerCase()}
+              </button>
+            ))}
+            <button type="button" onClick={onRectify}>
+              Rectificar
+            </button>
+            <button type="button" className="danger" onClick={onVoid}>
+              Anular
+            </button>
+          </>
+        )}
+      </div>
+    </Modal>
   );
 }

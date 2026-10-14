@@ -56,6 +56,27 @@ como categoria especial. Por eso:
 
 Dos roles: `admin` (todo, incluidos usuarios) y `pro` (el trabajo diario).
 
+## Facturacion
+
+Una factura nace como **borrador**, sin numero, y se edita entera. Al
+**emitirla** toma numero correlativo, guarda una copia de los datos fiscales
+de emisor y clienta, y queda congelada: a partir de ahi solo cambia su estado
+de cobro. Los errores se corrigen con una **factura rectificativa** enlazada a
+la original, que es lo que exige la norma.
+
+- El numero es `serie + ano + correlativo` (`2026-0001`, `R2026-0001`), unico
+  por los tres a la vez, asi que el correlativo reinicia cada ano sin chocar.
+- La copia de datos fiscales hace que una factura emitida no cambie aunque
+  luego cambie la ficha de la clienta.
+- Cada factura emitida guarda un hash encadenado con la anterior. No se envia
+  a ningun sitio: esta para poder demostrar que el historico no se ha tocado,
+  y para no rediseñar nada si Verifactu acaba aplicando.
+- El PDF se genera en el servidor (`pdfkit`) y se adjunta al email junto al
+  Excel.
+
+Antes de poder emitir hay que rellenar los datos fiscales en **Ajustes**, y la
+clienta necesita NIF en su ficha.
+
 ## Estructura
 
 ```
@@ -64,6 +85,9 @@ server/app.js        App Express con todas las rutas
 server/auth.js       Sesiones, usuarios y registro de accesos
 server/passwords.js  Hash de contrasenas con scrypt
 server/security.js   Cabeceras, cookies y comprobacion de origen
+server/invoices.js   Facturacion: borrador, emision, rectificativas
+server/invoice-pdf.js  PDF de factura
+server/settings.js   Ajustes del negocio (datos fiscales, facturacion)
 server/db.js         Capa de datos (node:sqlite en local, Turso en produccion)
 server/index.js      Punto de entrada local
 src/                 Frontend React (vistas por modulo)

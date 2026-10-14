@@ -8,6 +8,7 @@ import Invoices from './views/Invoices.jsx';
 import Calendar from './views/Calendar.jsx';
 import Login from './views/Login.jsx';
 import Users from './views/Users.jsx';
+import Settings from './views/Settings.jsx';
 import PasswordModal from './components/PasswordModal.jsx';
 
 const NAV = [
@@ -18,6 +19,7 @@ const NAV = [
   { id: 'services', label: 'Servicios', icon: '✦' },
   { id: 'invoices', label: 'Facturas', icon: '€' },
   { id: 'users', label: 'Usuarios', icon: '⚇', adminOnly: true },
+  { id: 'settings', label: 'Ajustes', icon: '⚙', adminOnly: true },
 ];
 
 export default function App() {
@@ -163,6 +165,7 @@ export default function App() {
         {route.view === 'services' && <Services />}
         {route.view === 'invoices' && <Invoices initialFilter={route.filter} />}
         {route.view === 'users' && session.role === 'admin' && <Users me={session} />}
+        {route.view === 'settings' && session.role === 'admin' && <Settings />}
       </main>
 
       {pwOpen && <PasswordModal onClose={() => setPwOpen(false)} />}

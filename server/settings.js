@@ -1,0 +1,104 @@
+// Ajustes del negocio. Lo que antes estaba escrito en el código (datos
+// fiscales, serie de facturación, tipos por defecto) vive aquí, para que se
+// pueda cambiar sin tocar el código y para poder adaptar el CRM a otro
+// negocio sin reescribirlo.
+import express from 'express';
+import { get, run } from './db.js';
+import { requireAdmin, audit } from './auth.js';
+
+export const DEFAULTS = {
+  issuer: {
+    name: '',
+    taxId: '',
+    address: '',
+    postalCode: '',
+    city: '',
+    province: '',
+    country: 'España',
+    email: '',
+    phone: '',
+  },
+  invoicing: {
+    series: '', // serie de las facturas ordinarias; vacía = solo año y correlativo
+    rectifySeries: 'R', // serie de las rectificativas
+    vatRate: 0,
+    irpfRate: 0,
+    dueDays: 0, // días de vencimiento desde la fecha de factura
+    exemptionNote:
+      'Operación exenta de IVA conforme al artículo 20.Uno.3º de la Ley 37/1992 del IVA (asistencia sanitaria).',
+    paymentDetails: '',
+    footer: '',
+  },
+};
+
+/** Mezcla superficial sobre los valores por defecto: si falta una clave, vale la de fábrica. */
+const withDefaults = (key, stored) => ({ ...DEFAULTS[key], ...(stored || {}) });
+
+/** @param {keyof DEFAULTS} key */
+export async function getSetting(key) {
+  const row = await get('SELECT value FROM settings WHERE key = ?', [key]);
+  if (!row) return { ...DEFAULTS[key] };
+  try {
+    return withDefaults(key, JSON.parse(row.value));
+  } catch {
+    return { ...DEFAULTS[key] };
+  }
+}
+
+export async function getSettings() {
+  const out = {};
+  for (const key of Object.keys(DEFAULTS)) out[key] = await getSetting(key);
+  return out;
+}
+
+/**
+ * Guarda solo las claves que existen en los valores por defecto: así el
+ * cuerpo de la petición no puede meter campos arbitrarios en los ajustes.
+ */
+async function setSetting(key, patch) {
+  const current = await getSetting(key);
+  const next = { ...current };
+  for (const field of Object.keys(DEFAULTS[key])) {
+    if (patch?.[field] === undefined) continue;
+    next[field] = typeof DEFAULTS[key][field] === 'number' ? Number(patch[field]) || 0 : String(patch[field]);
+  }
+  const exists = await get('SELECT key FROM settings WHERE key = ?', [key]);
+  if (exists) {
+    await run("UPDATE settings SET value = ?, updatedAt = datetime('now') WHERE key = ?", [
+      JSON.stringify(next),
+      key,
+    ]);
+  } else {
+    await run('INSERT INTO settings (key, value) VALUES (?, ?)', [key, JSON.stringify(next)]);
+  }
+  return next;
+}
+
+/** ¿Están los datos mínimos para emitir una factura válida? */
+export function issuerIsComplete(issuer) {
+  return !!(issuer.name && issuer.taxId && issuer.address && issuer.city);
+}
+
+export const settingsRouter = express.Router();
+
+// Cualquiera que haya entrado puede leer los ajustes (la interfaz los
+// necesita para pintar formularios y facturas); solo admin los cambia.
+settingsRouter.get('/', async (req, res, next) => {
+  try {
+    res.json(await getSettings());
+  } catch (e) {
+    next(e);
+  }
+});
+
+settingsRouter.put('/:key', requireAdmin, async (req, res, next) => {
+  try {
+    const key = req.params.key;
+    if (!Object.hasOwn(DEFAULTS, key)) return res.status(404).json({ error: 'Ajuste desconocido' });
+    const value = await setSetting(key, req.body ?? {});
+    await audit(req, { action: 'settings_update', entity: 'settings', entityId: key });
+    res.json(value);
+  } catch (e) {
+    next(e);
+  }
+});
