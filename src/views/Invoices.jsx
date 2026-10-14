@@ -190,32 +190,17 @@ export default function Invoices({ initialFilter }) {
     XLSX.writeFile(wb, `facturas-witamaternidad-${stamp}.xlsx`);
   }
 
+  // El destinatario y el adjunto los decide el servidor a partir de la ficha
+  // de la clienta; aquí solo confirmamos a quién va.
   async function emailInvoice(row) {
     const inv = await api.get('invoices', row.id);
-    const to = window.prompt('Enviar la factura a (email):', inv.clientEmail || '');
-    if (to === null) return;
+    if (!inv.clientEmail) {
+      alert('La clienta no tiene email en su ficha. Añádelo en Clientas y vuelve a intentarlo.');
+      return;
+    }
+    if (!confirm(`¿Enviar la factura ${inv.number} a ${inv.clientEmail}?`)) return;
     try {
-      const XLSX = await import('xlsx');
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(
-        wb,
-        XLSX.utils.json_to_sheet(
-          inv.items.map((it) => ({
-            Concepto: it.description,
-            Cantidad: it.qty,
-            Precio: it.price,
-            'IVA %': it.vat,
-            Importe: (Number(it.qty) || 0) * (Number(it.price) || 0),
-          })),
-        ),
-        'Factura',
-      );
-      const xlsxBase64 = XLSX.write(wb, { type: 'base64', bookType: 'xlsx' });
-      const res = await fetch(`/api/invoices/${row.id}/email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: to.trim() || undefined, xlsxBase64 }),
-      });
+      const res = await fetch(`/api/invoices/${row.id}/email`, { method: 'POST' });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Error al enviar');
       alert(`Factura enviada a ${data.to}`);

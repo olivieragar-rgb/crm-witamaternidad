@@ -2,6 +2,7 @@ import express from 'express';
 import { all, get, run, ready } from './db.js';
 import { searchItems } from '../src/search.js';
 import { sendMail, mailerConfigured } from './mailer.js';
+import { invoiceXlsxBase64 } from './invoice-xlsx.js';
 
 const app = express();
 app.use(express.json());
@@ -180,7 +181,7 @@ app.use(
 
 async function invoiceWithItems(id) {
   const inv = await get(
-    `SELECT i.*, c.name AS clientName FROM invoices i
+    `SELECT i.*, c.name AS clientName, c.email AS clientEmail FROM invoices i
      LEFT JOIN clients c ON c.id = i.clientId WHERE i.id = ?`,
     [id],
   );
@@ -326,23 +327,29 @@ function invoiceEmailHtml(inv) {
 
 app.get('/api/mail-status', (req, res) => res.json({ configured: mailerConfigured() }));
 
+// The recipient and the attachment are both derived from stored data, never
+// from the request body: an unauthenticated caller could otherwise use this
+// route to mail an arbitrary file to an arbitrary address from our Gmail.
 app.post('/api/invoices/:id/email', async (req, res, next) => {
   try {
     const inv = await invoiceWithItems(Number(req.params.id));
     if (!inv) return res.status(404).json({ error: 'No encontrado' });
     const client = inv.clientId ? await get('SELECT email FROM clients WHERE id = ?', [inv.clientId]) : null;
-    const to = (req.body?.to || client?.email || '').trim();
-    if (!to) return res.status(400).json({ error: 'La clienta no tiene email; indica un destinatario.' });
-
-    const attachments = [];
-    if (req.body?.xlsxBase64) {
-      attachments.push({
-        filename: `factura-${inv.number}.xlsx`,
-        content: req.body.xlsxBase64,
-        encoding: 'base64',
-        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    const to = (client?.email || '').trim();
+    if (!to) {
+      return res.status(400).json({
+        error: 'La clienta no tiene email en su ficha. Añádelo en Clientas y vuelve a intentarlo.',
       });
     }
+
+    const attachments = [
+      {
+        filename: `factura-${inv.number}.xlsx`,
+        content: invoiceXlsxBase64(inv),
+        encoding: 'base64',
+        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      },
+    ];
 
     await sendMail({ to, subject: `Factura ${inv.number} · Witamaternidad`, html: invoiceEmailHtml(inv), attachments });
     res.json({ ok: true, to });
