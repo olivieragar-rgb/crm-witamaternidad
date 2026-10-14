@@ -8,6 +8,7 @@ import { invoicesRouter, invoiceWithItems, lineAmount } from './invoices.js';
 import { settingsRouter, getSetting } from './settings.js';
 import { catalogsRouter } from './catalogs.js';
 import { privacyRouter, auditRouter } from './privacy.js';
+import { onCallRouter } from './oncall.js';
 import { securityHeaders, sameOrigin } from './security.js';
 import { attachUser, requireAuth, authRouter, usersRouter, audit } from './auth.js';
 
@@ -143,6 +144,7 @@ function crud({ table, fields, required = [], searchText, orderBy = 'id DESC', b
 // /api/clients/:id y "retention" se leeria como un identificador.
 app.use('/api/clients', privacyRouter);
 app.use('/api/audit', auditRouter);
+app.use('/api/oncall', onCallRouter);
 
 // Con datos de categoria especial hay que poder demostrar quien vio que, no
 // solo quien cambio que.

@@ -1447,3 +1447,50 @@ a.btn:hover {
 .consent summary {
   color: var(--green-dark);
 }
+
+
+/* ---- guardia en el calendario ---- */
+.cal-cell.on-call {
+  background: linear-gradient(to bottom, var(--green-light) 0 4px, transparent 4px);
+}
+
+.cal-cell.on-call-clash {
+  background: linear-gradient(to bottom, var(--terracotta-light) 0 4px, transparent 4px);
+}
+
+.guard-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  display: flex;
+  gap: 1px;
+}
+
+.guard-dot {
+  flex: 1;
+  background: var(--green);
+  border-radius: 1px;
+}
+
+.on-call-clash .guard-dot {
+  background: var(--terracotta);
+}
+
+.cal-cell {
+  position: relative;
+}
+
+.dot-guard {
+  background: var(--green);
+}
+
+.dot-clash {
+  background: var(--terracotta);
+}
+
+.cal-legend .muted {
+  display: block;
+  margin-top: 4px;
+}

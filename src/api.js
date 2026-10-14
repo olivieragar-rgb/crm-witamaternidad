@@ -82,6 +82,11 @@ export const api = {
     return req('GET', `/api/audit${qs ? `?${qs}` : ''}`);
   },
 
+  // Guardia alrededor de la FPP
+  oncall: () => req('GET', '/api/oncall'),
+  oncallConflicts: (dueDate, excludeId) =>
+    req('GET', `/api/oncall/conflicts?dueDate=${encodeURIComponent(dueDate)}${excludeId ? `&excludeId=${excludeId}` : ''}`),
+
   catalogs: () => req('GET', '/api/catalogs'),
   addCatalog: (body) => req('POST', '/api/catalogs', body),
   updateCatalog: (id, body) => req('PUT', `/api/catalogs/${id}`, body),

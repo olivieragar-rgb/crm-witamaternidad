@@ -5,6 +5,13 @@ import { Modal, Field } from '../components/ui.jsx';
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 const WEEKDAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
 
+/** Suma días a 'YYYY-MM-DD' en UTC, igual que en el servidor. */
+const addDaysIso = (iso, days) => {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+};
+
 const ymd = (d) => {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -19,12 +26,14 @@ export default function Calendar() {
   });
   const [notes, setNotes] = useState([]);
   const [appts, setAppts] = useState([]);
+  const [oncall, setOncall] = useState({ config: null, windows: [] });
   const [selected, setSelected] = useState(null); // 'YYYY-MM-DD'
   const [draft, setDraft] = useState('');
 
   const load = () => {
     api.list('notes').then(setNotes);
     api.list('appointments').then(setAppts);
+    api.oncall().then(setOncall);
   };
   useEffect(() => {
     load();
@@ -44,6 +53,18 @@ export default function Calendar() {
     return map;
   }, [notes, appts]);
 
+  // Qué guardias cubren cada día. Un día con dos o más es un solapamiento:
+  // dos partos que pueden caer a la vez.
+  const guardByDay = useMemo(() => {
+    const map = {};
+    for (const w of oncall.windows) {
+      for (let d = w.start; d <= w.end; d = addDaysIso(d, 1)) {
+        (map[d] = map[d] || []).push(w);
+      }
+    }
+    return map;
+  }, [oncall]);
+
   // Build the weeks grid (Monday first).
   const weeks = useMemo(() => {
     const first = new Date(cursor.year, cursor.month, 1);
@@ -61,6 +82,12 @@ export default function Calendar() {
   const prev = () => setCursor((c) => (c.month === 0 ? { year: c.year - 1, month: 11 } : { ...c, month: c.month - 1 }));
   const next = () => setCursor((c) => (c.month === 11 ? { year: c.year + 1, month: 0 } : { ...c, month: c.month + 1 }));
   const today = ymd(new Date());
+
+  // Una pareja solapada se nombra una sola vez: si A choca con B, no hace
+  // falta repetir que B choca con A.
+  const clashes = oncall.windows.filter(
+    (w) => w.overlapsWith.length > 0 && w.overlapsWith.every((o) => o.id > w.id),
+  );
 
   const dayNotes = selected ? byDay[selected]?.notes || [] : [];
   const dayAppts = selected ? byDay[selected]?.appts || [] : [];
@@ -104,15 +131,35 @@ export default function Calendar() {
               if (!day) return <div key={di} className="cal-cell empty" />;
               const key = ymd(day);
               const info = byDay[key];
+              const guards = guardByDay[key] || [];
+              const clash = guards.length > 1;
               return (
                 <button
                   key={di}
-                  className={'cal-cell' + (key === today ? ' is-today' : '')}
+                  className={
+                    'cal-cell' +
+                    (key === today ? ' is-today' : '') +
+                    (guards.length ? ' on-call' : '') +
+                    (clash ? ' on-call-clash' : '')
+                  }
                   onClick={() => {
                     setSelected(key);
                     setDraft('');
                   }}
                 >
+                  {guards.length > 0 && (
+                    <span
+                      className="guard-bar"
+                      title={
+                        (clash ? '⚠ Dos partos posibles a la vez: ' : 'Guardia: ') +
+                        guards.map((g) => g.name).join(', ')
+                      }
+                    >
+                      {guards.map((g) => (
+                        <span key={g.id} className="guard-dot" />
+                      ))}
+                    </span>
+                  )}
                   <span className="cal-num">{day.getDate()}</span>
                   <span className="cal-events">
                     {(info?.appts || []).slice(0, 3).map((a) => (
@@ -140,8 +187,28 @@ export default function Calendar() {
       </div>
 
       <p className="cal-legend">
-        <span className="dot dot-appt" /> Citas &nbsp; <span className="dot dot-note" /> Notas
+        <span className="dot dot-appt" /> Citas &nbsp; <span className="dot dot-note" /> Notas &nbsp;
+        <span className="dot dot-guard" /> Guardia &nbsp; <span className="dot dot-clash" /> Dos a la vez
+        {oncall.config && (
+          <span className="muted">
+            {' '}· ventana de {oncall.config.weeksBefore} semanas antes y {oncall.config.weeksAfter} después
+            de la FPP (se cambia en Ajustes)
+          </span>
+        )}
       </p>
+
+      {clashes.length > 0 && (
+        <p className="notice">
+          <strong>Guardias que se solapan.</strong> Estas clientas pueden ponerse de parto a la vez, así que
+          harían falta dos personas:{' '}
+          {clashes.map((c, i) => (
+            <span key={c.id}>
+              {i > 0 && ' · '}
+              {c.name} y {c.overlapsWith.map((o) => o.name).join(', ')}
+            </span>
+          ))}
+        </p>
+      )}
 
       {selected && (
         <Modal
@@ -150,6 +217,23 @@ export default function Calendar() {
           onSubmit={addNote}
           submitLabel="Añadir nota"
         >
+          {(guardByDay[selected] || []).length > 0 && (
+            <div className="day-appts">
+              <strong>De guardia</strong>
+              <ul className="mini-list">
+                {(guardByDay[selected] || []).map((g) => (
+                  <li key={g.id}>
+                    <span>{g.name}</span>
+                    <span className="muted">FPP {g.dueDate.split('-').reverse().join('/')}</span>
+                  </li>
+                ))}
+              </ul>
+              {(guardByDay[selected] || []).length > 1 && (
+                <p className="error">Dos partos posibles este día.</p>
+              )}
+            </div>
+          )}
+
           {dayAppts.length > 0 && (
             <div className="day-appts">
               <strong>Citas</strong>

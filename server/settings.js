@@ -28,6 +28,12 @@ export const DEFAULTS = {
     greeting: 'Hola {{clienta}}, adjuntamos tu factura {{numero}} ({{fecha}}).',
     signature: '',
   },
+  // Semanas de disponibilidad permanente alrededor de la FPP. Por defecto,
+  // desde la semana 37 (termino) hasta dos despues de la fecha prevista.
+  oncall: {
+    weeksBefore: 3,
+    weeksAfter: 2,
+  },
   privacy: {
     retentionYears: 5,
     consentVersion: '1',

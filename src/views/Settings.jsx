@@ -7,6 +7,7 @@ const TABS = [
   { id: 'issuer', label: 'Datos fiscales' },
   { id: 'invoicing', label: 'Facturación' },
   { id: 'brand', label: 'Marca' },
+  { id: 'oncall', label: 'Agenda' },
   { id: 'emailTemplate', label: 'Email' },
   { id: 'privacy', label: 'Privacidad' },
   { id: 'catalogs', label: 'Listas' },
@@ -34,6 +35,7 @@ export default function Settings() {
     brand: config.brand,
     emailTemplate: config.emailTemplate,
     privacy: config.privacy,
+    oncall: config.oncall,
   });
   const [saved, setSaved] = useState('');
   const [error, setError] = useState('');
@@ -165,6 +167,42 @@ export default function Settings() {
             </Field>
           </div>
           <SaveRow onSave={() => save('brand')} saved={saved === 'brand'} />
+        </div>
+      )}
+
+      {tab === 'oncall' && (
+        <div className="panel">
+          <p className="muted">
+            Las semanas de disponibilidad permanente alrededor de la fecha probable de parto. El calendario
+            pinta esa franja para cada clienta y avisa cuando dos se solapan, que es cuando harían falta dos
+            personas.
+          </p>
+          <div className="form-grid">
+            <Field label="Semanas antes de la FPP">
+              <input
+                type="number"
+                min="0"
+                max="12"
+                step="0.5"
+                value={draft.oncall.weeksBefore}
+                onChange={set('oncall', 'weeksBefore')}
+              />
+            </Field>
+            <Field label="Semanas después de la FPP">
+              <input
+                type="number"
+                min="0"
+                max="12"
+                step="0.5"
+                value={draft.oncall.weeksAfter}
+                onChange={set('oncall', 'weeksAfter')}
+              />
+            </Field>
+          </div>
+          <p className="muted small">
+            Por defecto, 3 semanas antes (desde la 37, que es cuando el embarazo es a término) y 2 después.
+          </p>
+          <SaveRow onSave={() => save('oncall')} saved={saved === 'oncall'} />
         </div>
       )}
 
