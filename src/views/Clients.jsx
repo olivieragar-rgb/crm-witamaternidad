@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { api, fmtDate, gestWeeks } from '../api.js';
 import { searchItems } from '../search.js';
 import { Toolbar, Badge, Modal, Field, EmptyRow } from '../components/ui.jsx';
+import QuestionnaireModal from '../components/QuestionnaireModal.jsx';
+import { kindForService } from '../data/questionnaires.js';
 import { useConfig, options } from '../config.jsx';
 
 const EMPTY = {
@@ -23,8 +25,18 @@ export default function Clients({ initialFilter }) {
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState('');
   const [clash, setClash] = useState(null);
+  // { client, kind, fromCreate }: el cuestionario abierto, y si venimos de
+  // crear la ficha (entonces cerrar no cancela nada, es "mas tarde").
+  const [formFor, setFormFor] = useState(null);
+  // { [clientId]: Array<{ kind, status }> }, para marcar los pendientes.
+  const [formStatus, setFormStatus] = useState({});
 
-  const load = () => api.list('clients').then(setRows);
+  const load = () => {
+    // El resumen de cuestionarios es una peticion para toda la tabla, no una
+    // por fila. Si falla, el listado se pinta igual y sin marcas.
+    api.clientForms().then(setFormStatus).catch(() => setFormStatus({}));
+    return api.list('clients').then(setRows);
+  };
   useEffect(() => {
     load();
   }, []);
@@ -71,10 +83,15 @@ export default function Clients({ initialFilter }) {
       const body = form.consentAt
         ? { ...form, consentVersion: form.consentVersion || config.privacy.consentVersion }
         : form;
-      if (editingId) await api.update('clients', editingId, body);
-      else await api.create('clients', body);
+      const saved = editingId
+        ? await api.update('clients', editingId, body)
+        : await api.create('clients', body);
       setOpen(false);
       load();
+      // Al crear, el cuestionario del servicio es el paso siguiente. Al
+      // editar no: para eso esta el boton del listado.
+      const kind = editingId ? null : kindForService(saved.service);
+      if (kind) setFormFor({ client: saved, kind, fromCreate: true });
     } catch (e) {
       setError(e.message);
     }
@@ -126,6 +143,7 @@ export default function Clients({ initialFilter }) {
             <th>Modalidad</th>
             <th>FPP</th>
             <th>Estado</th>
+            <th>Cuestionario</th>
             <th></th>
           </tr>
         </thead>
@@ -157,6 +175,26 @@ export default function Clients({ initialFilter }) {
               <td>
                 <Badge value={c.status} />
               </td>
+              <td>
+                {(() => {
+                  if (c.anonymizedAt) return <span className="muted">—</span>;
+                  const saved = formStatus[c.id] || [];
+                  // El del servicio; si el servicio no pide ninguno pero hay
+                  // uno guardado (le cambiaron el servicio despues), ese.
+                  const kind = kindForService(c.service) || saved[0]?.kind;
+                  if (!kind) return <span className="muted">—</span>;
+                  const row = saved.find((f) => f.kind === kind);
+                  return (
+                    <button onClick={() => setFormFor({ client: c, kind })}>
+                      {row ? (
+                        <Badge value={row.status === 'completo' ? 'Completo' : 'Pendiente'} />
+                      ) : (
+                        'Rellenar'
+                      )}
+                    </button>
+                  );
+                })()}
+              </td>
               <td className="row-actions">
                 <a className="btn" href={api.exportClientUrl(c.id)} target="_blank" rel="noreferrer"
                    title="Descargar todo lo que guardamos de ella (derecho de acceso)">
@@ -183,7 +221,7 @@ export default function Clients({ initialFilter }) {
               </td>
             </tr>
           ))}
-          {visible.length === 0 && <EmptyRow colSpan={6} />}
+          {visible.length === 0 && <EmptyRow colSpan={7} />}
         </tbody>
       </table>
 
@@ -294,6 +332,16 @@ export default function Clients({ initialFilter }) {
             <textarea rows={3} value={form.notes} onChange={set('notes')} placeholder="Semana de embarazo, preferencias, seguimiento…" />
           </Field>
         </Modal>
+      )}
+
+      {formFor && (
+        <QuestionnaireModal
+          client={formFor.client}
+          kind={formFor.kind}
+          cancelLabel={formFor.fromCreate ? 'Lo relleno más tarde' : 'Cancelar'}
+          onClose={() => setFormFor(null)}
+          onSaved={load}
+        />
       )}
     </section>
   );
