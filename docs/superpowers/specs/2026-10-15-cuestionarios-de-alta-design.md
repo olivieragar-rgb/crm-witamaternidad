@@ -234,6 +234,12 @@ lactancia» o «Preparación al parto», selector de cuestionario, el formulario
 y dos botones: **Guardar cuestionario** y **Lo relleno más tarde**. Salir sin
 guardar no pierde la ficha, que ya está guardada.
 
+El `Modal` de `ui.jsx` tiene hoy `submitLabel` pero su botón de cancelar dice
+siempre «Cancelar», y aquí ese botón no cancela nada: la ficha está guardada y
+el cuestionario se puede rellenar cuando sea. Se le añade un `cancelLabel`
+opcional que por defecto sigue diciendo «Cancelar», así que ningún otro modal
+cambia.
+
 Al **editar** una ficha ya existente no aparece el paso 2: ahí ya está el botón
 del listado.
 
@@ -246,6 +252,9 @@ Una columna nueva, «Cuestionario», con un botón por fila:
 - Guardado a medias → *Pendiente*. Completo → *Completo*.
 - Servicio que no pide cuestionario → `—`, y el formulario se puede abrir
   igualmente desde el selector si hace falta.
+
+La tabla pasa de seis a siete columnas, así que el `EmptyRow` del final sube su
+`colSpan` a 7 o la fila de «Sin resultados» se queda corta.
 
 ### Formulario
 
