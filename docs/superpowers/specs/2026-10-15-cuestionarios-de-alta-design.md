@@ -214,7 +214,10 @@ los tres mecanismos que ya existen:
    no sirve para ejercer el derecho de acceso.
 2. **Anonimización**: `DELETE FROM client_forms WHERE clientId = ?` en
    `privacyRouter.post('/:id/anonymize')`, al lado del borrado de notas de
-   citas.
+   citas. Y lo mismo al **borrar** la ficha: `client_forms` no cuelga de
+   `clients` con clave ajena, así que una ficha borrada dejaría sus respuestas
+   en la base para siempre. El CRUD genérico gana un gancho `afterDelete` para
+   eso, que el resto de las tablas no usa.
 3. **Registro de accesos**: el router audita explícitamente
    `client_form_view`, `client_form_list` y `client_form_update`, con el `kind`
    en el detalle. El middleware de auditoría de `/api/clients` registra hoy

@@ -163,3 +163,19 @@ test('anonimizar borra los cuestionarios y deja la ficha cerrada a datos nuevos'
   const exp = await a.get(`/api/clients/${id}/export`);
   assert.deepEqual(exp.data.cuestionarios, []);
 });
+
+test('borrar una ficha se lleva su cuestionario', async () => {
+  // Borrar es para una ficha creada por error (si tiene facturas, el
+  // servidor se niega). Lo que no puede pasar es que la clienta desaparezca y
+  // sus datos de salud se queden en la base.
+  const id = (await a.post('/api/clients', { name: 'Borrar Prueba', service: 'Lactancia' })).data.id;
+  await a.put(`/api/clients/${id}/form`, { kind: 'lactancia', data: { babyName: 'Sol' } });
+  assert.ok((await a.get('/api/clients/forms')).data[id], 'el cuestionario estaba guardado');
+
+  assert.equal((await a.del(`/api/clients/${id}`)).status, 204);
+  assert.equal(
+    (await a.get('/api/clients/forms')).data[id],
+    undefined,
+    'el cuestionario se tiene que ir con la ficha',
+  );
+});
