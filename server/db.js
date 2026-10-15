@@ -181,6 +181,22 @@ const SCHEMA = `
     active INTEGER NOT NULL DEFAULT 1
   );
   CREATE INDEX IF NOT EXISTS idx_catalogs_type ON catalogs (type, sortOrder);
+  -- Cuestionario de alta de la clienta. Las respuestas van en JSON porque los
+  -- dos cuestionarios no comparten ni una pregunta y las preguntas van a
+  -- cambiar: en columnas seria una migracion por pregunta.
+  --
+  -- El unico es la pareja (clientId, kind) y no la clienta: una misma clienta
+  -- puede contratar preparacion al parto y, meses despues, lactancia.
+  CREATE TABLE IF NOT EXISTS client_forms (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    clientId INTEGER NOT NULL,
+    kind TEXT NOT NULL,
+    data TEXT NOT NULL DEFAULT '{}',
+    status TEXT NOT NULL DEFAULT 'pendiente',
+    createdAt TEXT NOT NULL DEFAULT (datetime('now')),
+    updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_client_forms ON client_forms (clientId, kind);
 `;
 
 // Columnas e indices que se anadieron despues de la primera version. Se
