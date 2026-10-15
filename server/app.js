@@ -21,6 +21,38 @@ app.disable('x-powered-by');
 app.use(securityHeaders);
 app.use(express.json({ limit: '64kb' }));
 
+// Diagnostico. Va ANTES del middleware que prepara la base, para poder
+// responder justo cuando la base es lo que falla, que es cuando hace falta.
+//
+// No expone nada sensible: ni credenciales, ni rutas, ni el mensaje de la
+// excepcion. Solo que pieza esta fallando y con que codigo de error, que es
+// lo unico que se necesita para saber donde mirar.
+app.get('/api/health', async (req, res) => {
+  const out = {
+    turso: !!process.env.TURSO_DATABASE_URL,
+    mail: mailerConfigured(),
+    node: process.versions.node,
+  };
+  try {
+    await ready();
+    const row = await get('SELECT COUNT(*) AS n FROM users');
+    out.db = 'ok';
+    out.users = row.n;
+    res.json({ ok: true, ...out });
+  } catch (e) {
+    // El codigo y el nombre bastan para identificar el fallo y no llevan
+    // datos dentro; el mensaje completo se queda en los logs del servidor.
+    console.error('health', e);
+    res.status(503).json({
+      ok: false,
+      ...out,
+      db: 'error',
+      code: e?.code ?? null,
+      name: e?.name ?? null,
+    });
+  }
+});
+
 // Make sure the schema + seed exist before any request (important on serverless cold starts).
 app.use(async (req, res, next) => {
   try {

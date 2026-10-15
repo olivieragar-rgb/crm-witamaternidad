@@ -15,6 +15,16 @@ function impl() {
 }
 
 async function makeNodeSqlite() {
+  // En Vercel el sistema de ficheros es de solo lectura, asi que sin las
+  // credenciales de Turso no hay base posible. Mejor decirlo que fallar con
+  // un error de permisos que no explica nada.
+  if (process.env.VERCEL && !process.env.CRM_DB_FILE) {
+    const err = new Error(
+      'Faltan TURSO_DATABASE_URL y TURSO_AUTH_TOKEN en las variables de entorno del proyecto.',
+    );
+    err.code = 'NO_DATABASE_CONFIGURED';
+    throw err;
+  }
   const { DatabaseSync } = await import('node:sqlite');
   // CRM_DB_FILE deja a las pruebas trabajar sobre una base aparte.
   const db = new DatabaseSync(process.env.CRM_DB_FILE || join(here, 'crm.db'));
