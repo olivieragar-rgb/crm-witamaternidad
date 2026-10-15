@@ -36,9 +36,11 @@ app.get('/api/health', async (req, res) => {
   try {
     await ready();
     const row = await get('SELECT COUNT(*) AS n FROM users');
+    const { migrationIssues } = await import('./db.js');
     out.db = 'ok';
     out.users = row.n;
-    res.json({ ok: true, ...out });
+    out.issues = migrationIssues;
+    res.json({ ok: migrationIssues.length === 0, ...out });
   } catch (e) {
     // El codigo y el nombre bastan para identificar el fallo y no llevan
     // datos dentro; el mensaje completo se queda en los logs del servidor.

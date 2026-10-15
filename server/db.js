@@ -237,7 +237,15 @@ const INDEXES = `
 
 let readyPromise;
 export function ready() {
-  if (!readyPromise) readyPromise = init();
+  if (!readyPromise) {
+    // Si la preparacion falla, se olvida la promesa rechazada: de lo
+    // contrario la instancia se queda devolviendo el mismo error para
+    // siempre y ni siquiera un reintento puede recuperarla.
+    readyPromise = init().catch((e) => {
+      readyPromise = undefined;
+      throw e;
+    });
+  }
   return readyPromise;
 }
 
@@ -253,17 +261,56 @@ async function init() {
   if (!useTurso && !process.env.CRM_DB_FILE) await seed();
 }
 
+/**
+ * Problemas encontrados al migrar que no impiden arrancar pero hay que
+ * resolver. Los expone /api/health.
+ * @type {Array<{ step: string, detail: string }>}
+ */
+export const migrationIssues = [];
+
 async function migrate() {
+  migrationIssues.length = 0;
+
   for (const [table, column, ddl] of COLUMNS) {
     const cols = await all(`PRAGMA table_info(${table})`);
     if (cols.some((c) => c.name === column)) continue;
     await run(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
   }
-  await (await impl()).exec(INDEXES);
+
+  // Los indices se crean uno a uno. Un indice UNIQUE sobre datos que ya
+  // existian puede fallar si esos datos lo violan, y eso no puede dejar la
+  // aplicacion entera sin arrancar: se anota y se sigue.
+  for (const sql of INDEXES.split(';').map((x) => x.trim()).filter(Boolean)) {
+    try {
+      await run(sql);
+    } catch (e) {
+      migrationIssues.push({ step: 'index', detail: `${nameOfIndex(sql)}: ${e.code || e.name}` });
+    }
+  }
+
   // La primera version de la columna se creo con el pais sin tilde.
   await run("UPDATE clients SET country = 'España' WHERE country = 'Espana'");
   await backfillInvoiceSeries();
   await backfillInvoiceSnapshots();
+  await checkDuplicateNumbers();
+}
+
+const nameOfIndex = (sql) => (/INDEX(?: IF NOT EXISTS)? (\w+)/i.exec(sql) || [, '?'])[1];
+
+/**
+ * Numeros de factura repetidos. El codigo anterior no garantizaba que fueran
+ * unicos, asi que una base con historial puede traerlos. No se tocan: son
+ * documentos fiscales y renumerarlos por nuestra cuenta seria peor que el
+ * problema. Se avisa para que se corrijan a mano.
+ */
+async function checkDuplicateNumbers() {
+  const dups = await all(
+    `SELECT number, COUNT(*) AS n FROM invoices
+     WHERE number <> '' GROUP BY number HAVING n > 1 ORDER BY number`,
+  );
+  for (const d of dups) {
+    migrationIssues.push({ step: 'duplicate-number', detail: `${d.number} aparece ${d.n} veces` });
+  }
 }
 
 // Las facturas emitidas antes de que existiera la copia de datos fiscales
@@ -297,12 +344,21 @@ async function backfillInvoiceSeries() {
       await run("UPDATE invoices SET number = '' WHERE id = ?", [inv.id]);
       continue;
     }
-    await run('UPDATE invoices SET fiscalYear = ?, seq = ?, issuedAt = ? WHERE id = ?', [
-      Number(m[1]),
-      Number(m[2]),
-      inv.date || null,
-      inv.id,
-    ]);
+    try {
+      await run('UPDATE invoices SET fiscalYear = ?, seq = ?, issuedAt = ? WHERE id = ?', [
+        Number(m[1]),
+        Number(m[2]),
+        inv.date || null,
+        inv.id,
+      ]);
+    } catch (e) {
+      // Dos facturas con el mismo numero chocarian aqui. Se deja la factura
+      // como esta y se avisa: el dato es fiscal y lo arregla una persona.
+      migrationIssues.push({
+        step: 'backfill',
+        detail: `factura ${inv.id} (${inv.number}): ${e.code || e.name}`,
+      });
+    }
   }
 }
 
