@@ -92,6 +92,53 @@ la original, que es lo que exige la norma.
 Antes de poder emitir hay que rellenar los datos fiscales en **Ajustes**, y la
 clienta necesita NIF en su ficha.
 
+## Que lleva una factura
+
+La presentacion del PDF sigue el **articulo 6.1 del RD 1619/2012**, el
+Reglamento de facturacion, que es el que dice que tiene que llevar una
+factura completa:
+
+| | Dato | Donde se rellena |
+|---|---|---|
+| a | Numero y serie, correlativos | Automatico al emitir |
+| b | Fecha de expedicion | En la factura |
+| c | Nombre o razon social de emisor y destinataria | Ajustes / ficha de clienta |
+| d | NIF de ambos | Ajustes / ficha de clienta |
+| e | Domicilio de ambos | Ajustes / ficha de clienta |
+| f | Descripcion, precio unitario sin impuestos y descuentos | Lineas de la factura |
+| g | Tipo o tipos impositivos aplicados | Por linea |
+| h | Cuota repercutida, por separado | Automatico, **desglosada por tipo** |
+| i | Fecha de la operacion, si difiere de la de expedicion | En la factura |
+| j | En operaciones exentas, la referencia al precepto | Ajustes, nota de exencion |
+| m | Mencion de inversion del sujeto pasivo | Casilla en la factura |
+
+Sin los datos de las columnas c, d y e el sistema **no deja emitir**, porque
+la factura no seria valida.
+
+Dos detalles que no son evidentes:
+
+- Con **varios tipos de IVA** en la misma factura, el PDF desglosa base y
+  cuota tipo a tipo. Un total unico de IVA no cumple el 6.1.h.
+- La **nota de exencion** sale en cuanto hay una linea al 0%, aunque la
+  factura lleve IVA en otras lineas.
+
+Esto no sustituye a una asesoria, y Verifactu (QR y envio a la AEAT) sigue
+sin aplicar.
+
+## Calendario en Google
+
+El CRM publica sus citas como suscripcion iCalendar. En **Ajustes > Agenda**
+se genera un enlace que se pega en Google Calendar (Otros calendarios > + >
+Con URL) y las citas aparecen alli, refrescandose solas.
+
+Va **en un sentido**: del CRM a Google. Lo que se apunte en Google no vuelve
+al CRM; para eso haria falta OAuth y un proyecto en Google Cloud.
+
+El enlace publica datos personales (a que hora se ve a cada clienta), asi que
+arranca apagado, lleva un token secreto, se puede revocar en cualquier momento
+y se puede publicar **sin los nombres**: los eventos dicen que hay y a que
+hora, pero no con quien.
+
 ## Configuracion
 
 Nada de lo propio del negocio esta escrito en el codigo. En **Ajustes** (solo
@@ -202,6 +249,7 @@ server/catalogs.js   Listas desplegables editables
 server/oncall.js     Ventanas de guardia alrededor de la FPP
 server/expenses.js   Gastos y resumen del 303 y el 130
 server/reminders.js  Recordatorios de cobro y de cita
+server/calendar.js   Publicacion del calendario como suscripcion .ics
 server/privacy.js    Derechos de la clienta, conservacion y registro de accesos
 src/lib/growth.js    Percentiles de peso (metodo LMS de la OMS)
 src/data/           Tablas de la OMS, generadas por scripts/build-who-data.mjs

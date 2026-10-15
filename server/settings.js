@@ -7,16 +7,23 @@ import { get, run } from './db.js';
 import { requireAdmin, audit } from './auth.js';
 
 export const DEFAULTS = {
+  // Datos del emisor. Los marcados como obligatorios lo son por el art. 6.1
+  // del RD 1619/2012 (Reglamento de facturacion): sin ellos la factura no es
+  // valida, y por eso el sistema no deja emitir hasta tenerlos.
   issuer: {
-    name: '',
-    taxId: '',
-    address: '',
+    name: '', // 6.1.c  nombre y apellidos o razon social completa
+    taxId: '', // 6.1.d  NIF
+    address: '', // 6.1.e  domicilio
     postalCode: '',
     city: '',
     province: '',
     country: 'España',
     email: '',
     phone: '',
+    // Solo para sociedades: la Ley de Sociedades de Capital obliga a hacer
+    // constar los datos registrales en la documentacion mercantil. Una
+    // autonoma lo deja vacio.
+    registryData: '',
   },
   brand: {
     name: 'Wita',
@@ -51,6 +58,14 @@ export const DEFAULTS = {
   oncall: {
     weeksBefore: 3,
     weeksAfter: 2,
+  },
+  // Publicacion del calendario como suscripcion .ics. Arranca apagado: lo
+  // que publica son datos personales y encenderlo tiene que ser una decision,
+  // no algo que venga puesto.
+  calendar: {
+    feedToken: '',
+    includeClientNames: 1,
+    includeOnCall: 1,
   },
   privacy: {
     retentionYears: 5,
@@ -129,6 +144,28 @@ export const settingsRouter = express.Router();
 settingsRouter.get('/', async (req, res, next) => {
   try {
     res.json(await getSettings());
+  } catch (e) {
+    next(e);
+  }
+});
+
+/**
+ * Genera o revoca el enlace del calendario. El token no se escribe a mano:
+ * se pide uno nuevo o se quita. Revocarlo deja fuera a cualquiera que tuviera
+ * la URL, que es justo lo que hace falta si se comparte por error.
+ */
+settingsRouter.post('/calendar/token', requireAdmin, async (req, res, next) => {
+  try {
+    const { nuevoToken } = await import('./calendar.js');
+    const value = await setSetting('calendar', {
+      feedToken: req.body?.revoke ? '' : nuevoToken(),
+    });
+    await audit(req, {
+      action: req.body?.revoke ? 'calendar_revoke' : 'calendar_token',
+      entity: 'settings',
+      entityId: 'calendar',
+    });
+    res.json(value);
   } catch (e) {
     next(e);
   }

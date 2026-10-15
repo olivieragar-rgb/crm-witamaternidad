@@ -222,6 +222,12 @@ const COLUMNS = [
 
   // Fecha del ultimo recordatorio enviado, para no repetirlo sin querer.
   ['invoices', 'remindedAt', "TEXT NOT NULL DEFAULT ''"],
+
+  // Art. 6.1.i del RD 1619/2012: la fecha en que se realizo la operacion,
+  // obligatoria en la factura cuando no coincide con la de expedicion.
+  ['invoices', 'operationDate', "TEXT NOT NULL DEFAULT ''"],
+  // Art. 6.1.m: mencion de inversion del sujeto pasivo.
+  ['invoices', 'reverseCharge', 'INTEGER NOT NULL DEFAULT 0'],
   ['appointments', 'remindedAt', "TEXT NOT NULL DEFAULT ''"],
 ];
 

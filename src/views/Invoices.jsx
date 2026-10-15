@@ -28,6 +28,8 @@ const EMPTY = (invoicing) => ({
   paymentMethod: '',
   irpfRate: invoicing?.irpfRate ?? 0,
   exemptionNote: '',
+  operationDate: '',
+  reverseCharge: false,
   notes: '',
   items: [{ ...blankItem(), vat: invoicing?.vatRate ?? 0 }],
 });
@@ -66,6 +68,7 @@ export default function Invoices({ initialFilter }) {
   const [error, setError] = useState('');
   const [detail, setDetail] = useState(null); // factura emitida que se está mirando
   const [reminder, setReminder] = useState(null); // id de la factura a recordar
+  const [selected, setSelected] = useState(() => new Set());
 
   const load = useCallback(
     () => api.invoices({ q: query, status, year, month, page }).then(setData),
@@ -73,6 +76,7 @@ export default function Invoices({ initialFilter }) {
   );
   useEffect(() => {
     load();
+    setSelected(new Set());
   }, [load]);
   useEffect(() => {
     api.list('clients').then(setClients);
@@ -87,8 +91,21 @@ export default function Invoices({ initialFilter }) {
     setPage(1);
   };
 
-  const set = (f) => (e) => setForm({ ...form, [f]: e.target.value });
+  const set = (f) => (e) =>
+    setForm({ ...form, [f]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
   const rows = data.rows;
+
+  const toggle = (id) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const allSelected = rows.length > 0 && rows.every((r) => selected.has(r.id));
+  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(rows.map((r) => r.id)));
+  // Lo que se exporta: la seleccion si hay alguna, y si no lo que se ve.
+  const target = selected.size ? rows.filter((r) => selected.has(r.id)) : rows;
   const pages = Math.ceil(data.total / data.pageSize) || 1;
 
   function newRow() {
@@ -108,6 +125,8 @@ export default function Invoices({ initialFilter }) {
       paymentMethod: inv.paymentMethod || '',
       irpfRate: inv.irpfRate || 0,
       exemptionNote: inv.exemptionNote || '',
+      operationDate: inv.operationDate || '',
+      reverseCharge: !!inv.reverseCharge,
       notes: inv.notes,
       items: inv.items.length
         ? inv.items.map(({ description, qty, price, vat, discount }) => ({
@@ -221,7 +240,7 @@ export default function Invoices({ initialFilter }) {
 
   async function exportExcel() {
     const XLSX = await import('xlsx'); // carga diferida: solo al exportar
-    const summary = rows.map((i) => ({
+    const summary = target.map((i) => ({
       Nº: i.number || '(borrador)',
       Fecha: i.date,
       Vencimiento: i.dueDate || '',
@@ -235,7 +254,7 @@ export default function Invoices({ initialFilter }) {
     }));
 
     const detailRows = [];
-    for (const row of rows) {
+    for (const row of target) {
       const inv = await api.get('invoices', row.id);
       for (const it of inv.items) {
         detailRows.push({
@@ -302,9 +321,16 @@ export default function Invoices({ initialFilter }) {
             {f.label}
           </button>
         ))}
-        <button className="export" onClick={exportExcel} disabled={rows.length === 0}>
-          ↓ Exportar Excel ({rows.length})
+        <button className="export" onClick={exportExcel} disabled={target.length === 0}>
+          ↓ Excel ({target.length})
         </button>
+        <a
+          className={'export' + (target.length === 0 ? ' disabled' : '')}
+          href={target.length ? api.invoicesPdfUrl(target.map((r) => r.id)) : undefined}
+          onClick={(e) => target.length === 0 && e.preventDefault()}
+        >
+          ↓ PDF ({target.length})
+        </a>
       </div>
 
       <div className="filters">
@@ -340,6 +366,14 @@ export default function Invoices({ initialFilter }) {
         <table className="grid-table">
         <thead>
           <tr>
+            <th className="pick">
+              <input
+                type="checkbox"
+                checked={allSelected}
+                onChange={toggleAll}
+                aria-label="Seleccionar todas las facturas de la página"
+              />
+            </th>
             <th>Nº</th>
             <th>Fecha</th>
             <th>Clienta</th>
@@ -350,7 +384,15 @@ export default function Invoices({ initialFilter }) {
         </thead>
         <tbody>
           {rows.map((i) => (
-            <tr key={i.id}>
+            <tr key={i.id} className={selected.has(i.id) ? 'is-picked' : ''}>
+              <td className="pick">
+                <input
+                  type="checkbox"
+                  checked={selected.has(i.id)}
+                  onChange={() => toggle(i.id)}
+                  aria-label={`Seleccionar la factura ${i.number || 'sin emitir'}`}
+                />
+              </td>
               <td>{i.number ? <strong>{i.number}</strong> : <span className="muted">Sin emitir</span>}</td>
               <td className="muted">{fmtDate(i.date)}</td>
               <td>{i.clientName || <span className="muted">—</span>}</td>
@@ -381,10 +423,23 @@ export default function Invoices({ initialFilter }) {
               </td>
             </tr>
           ))}
-          {rows.length === 0 && <EmptyRow colSpan={6} />}
+          {rows.length === 0 && <EmptyRow colSpan={7} />}
         </tbody>
         </table>
       </div>
+
+      {selected.size > 0 && (
+        <div className="selection-bar">
+          <span>
+            <strong>{selected.size}</strong> {selected.size === 1 ? 'factura seleccionada' : 'facturas seleccionadas'}
+          </span>
+          <a className="btn" href={api.invoicesPdfUrl([...selected])}>
+            Descargar en un PDF
+          </a>
+          <button onClick={exportExcel}>Descargar en Excel</button>
+          <button onClick={() => setSelected(new Set())}>Quitar selección</button>
+        </div>
+      )}
 
       {pages > 1 && (
         <div className="pager">
@@ -458,6 +513,9 @@ export default function Invoices({ initialFilter }) {
                   <option key={m}>{m}</option>
                 ))}
               </select>
+            </Field>
+            <Field label="Fecha de la operación">
+              <input type="date" value={form.operationDate} onChange={set('operationDate')} />
             </Field>
             <Field label="Retención IRPF %">
               <input type="number" step="0.01" min="0" max="100" value={form.irpfRate} onChange={set('irpfRate')} />
@@ -537,6 +595,20 @@ export default function Invoices({ initialFilter }) {
               <strong>{eur(t.total)}</strong>
             </div>
           </div>
+
+          <p className="muted small">
+            La fecha de la operación solo hace falta si el servicio se prestó en una fecha distinta a la de
+            la factura. Si coincide, déjala vacía y no saldrá en el PDF.
+          </p>
+
+          <label className="check">
+            <input type="checkbox" checked={!!form.reverseCharge} onChange={set('reverseCharge')} />
+            <span>Inversión del sujeto pasivo</span>
+          </label>
+          <p className="muted small">
+            Solo cuando quien declara el IVA es la clienta y no tú; por ejemplo al facturar a una empresa de
+            otro país de la UE. En la duda, déjalo sin marcar.
+          </p>
 
           {t.vat === 0 && (
             <Field label="Nota de exención de IVA (sale en la factura)">

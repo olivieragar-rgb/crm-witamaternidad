@@ -67,6 +67,7 @@ export const api = {
   rectifyInvoice: (id, body) => req('POST', `/api/invoices/${id}/rectify`, body),
   voidInvoice: (id, body) => req('POST', `/api/invoices/${id}/void`, body),
   invoicePdfUrl: (id) => `/api/invoices/${id}/pdf`,
+  invoicesPdfUrl: (ids) => `/api/invoices/pdf?ids=${ids.join(',')}`,
 
   settings: () => req('GET', '/api/settings'),
   saveSettings: (key, body) => req('PUT', `/api/settings/${key}`, body),
@@ -103,6 +104,8 @@ export const api = {
   oncall: () => req('GET', '/api/oncall'),
   oncallConflicts: (dueDate, excludeId) =>
     req('GET', `/api/oncall/conflicts?dueDate=${encodeURIComponent(dueDate)}${excludeId ? `&excludeId=${excludeId}` : ''}`),
+
+  calendarToken: (revoke) => req('POST', '/api/settings/calendar/token', { revoke: !!revoke }),
 
   catalogs: () => req('GET', '/api/catalogs'),
   addCatalog: (body) => req('POST', '/api/catalogs', body),

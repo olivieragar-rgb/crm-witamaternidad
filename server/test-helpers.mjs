@@ -69,5 +69,7 @@ export function makeClient(base) {
     forget: () => {
       cookie = '';
     },
+    /** La cookie actual, para las pruebas que llaman con fetch directo. */
+    cookie: () => cookie,
   };
 }

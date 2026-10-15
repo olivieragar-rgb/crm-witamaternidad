@@ -39,6 +39,38 @@ after(async () => {
   await tmp.cleanup();
 });
 
+/** Texto de un PDF de pdfkit, para poder comprobar que sale lo que debe. */
+async function textoDelPdf(buf) {
+  const { inflateSync } = await import('node:zlib');
+  const dec = new TextDecoder('windows-1252');
+  const raw = buf.toString('latin1');
+  const out = [];
+  let i = 0;
+  while ((i = raw.indexOf('stream', i)) !== -1) {
+    let s = i + 6;
+    if (raw[s] === '\r') s++;
+    if (raw[s] === '\n') s++;
+    const e = raw.indexOf('endstream', s);
+    if (e === -1) break;
+    try {
+      const t = inflateSync(Buffer.from(raw.slice(s, e), 'latin1')).toString('latin1');
+      for (const m of t.matchAll(/\[((?:<[0-9a-fA-F]*>|[\s\d.-])*)\]\s*TJ/g)) {
+        const bytes = Buffer.concat(
+          [...m[1].matchAll(/<([0-9a-fA-F]*)>/g)].map((h) => Buffer.from(h[1], 'hex')),
+        );
+        out.push(dec.decode(bytes));
+      }
+    } catch {
+      /* no todos los flujos son texto */
+    }
+    i = e + 9;
+  }
+  return out.join('\n');
+}
+
+/** La cookie del cliente, para las llamadas con fetch directo. */
+const cookieDe = (cli) => cli.cookie();
+
 const draft = async (over = {}) =>
   (
     await a.post('/api/invoices', {
@@ -69,6 +101,7 @@ test('sin IRPF el total es base mas IVA', () => {
     vat: 21,
     irpf: 0,
     total: 121,
+    vatBreakdown: [{ rate: 21, base: 100, vat: 21 }],
   });
 });
 
@@ -283,7 +316,16 @@ test('los totales del listado coinciden con los del detalle', async () => {
   await a.put(`/api/invoices/${inv.id}`, { irpfRate: 15 });
   const detalle = (await a.get(`/api/invoices/${inv.id}`)).data;
   const fila = (await a.get('/api/invoices')).data.rows.find((r) => r.id === inv.id);
-  assert.deepEqual(fila.totals, detalle.totals);
+
+  // Los importes tienen que cuadrar. El listado no trae el desglose por tipo
+  // de IVA: solo pinta el total, y sacarlo obligaria a una consulta agregada
+  // mas por cada carga para un dato que esa pantalla no enseña. Va en el
+  // detalle, que es de donde sale el PDF, que es donde la ley lo exige.
+  for (const campo of ['base', 'vat', 'irpf', 'total']) {
+    assert.equal(fila.totals[campo], detalle.totals[campo], campo);
+  }
+  assert.equal(fila.totals.vatBreakdown, undefined);
+  assert.ok(Array.isArray(detalle.totals.vatBreakdown), 'el detalle si lo trae');
 });
 
 // ---- integridad ----------------------------------------------------------
@@ -333,4 +375,103 @@ test('solo admin cambia los ajustes', async () => {
   const res = await a.put('/api/settings/invoicing', { vatRate: 21, hackeado: 'si' });
   assert.equal(res.data.vatRate, 21);
   assert.equal(res.data.hackeado, undefined);
+});
+
+// ---- requisitos del art. 6.1 del RD 1619/2012 ----------------------------
+
+test('el desglose del IVA va por tipo, no en un unico total', async () => {
+  // El art. 6.1.g y h piden el tipo aplicado y la cuota repercutida por
+  // separado: con varios tipos en una factura, un total unico no cumple.
+  const t = invoiceTotals(
+    [
+      { qty: 1, price: 100, vat: 21 },
+      { qty: 1, price: 200, vat: 10 },
+      { qty: 1, price: 50, vat: 21 },
+    ],
+    0,
+  );
+  assert.deepEqual(t.vatBreakdown, [
+    { rate: 10, base: 200, vat: 20 },
+    { rate: 21, base: 150, vat: 31.5 },
+  ]);
+  assert.equal(t.vat, 51.5, 'el total sigue siendo la suma de las cuotas');
+  assert.equal(t.base, 350);
+});
+
+test('con un solo tipo el desglose trae una linea', async () => {
+  const t = invoiceTotals([{ qty: 2, price: 100, vat: 0 }], 0);
+  assert.deepEqual(t.vatBreakdown, [{ rate: 0, base: 200, vat: 0 }]);
+});
+
+test('la fecha de operacion y la inversion del sujeto pasivo se guardan', async () => {
+  const inv = await draft({ operationDate: '2026-02-28', reverseCharge: true });
+  assert.equal(inv.operationDate, '2026-02-28');
+  assert.equal(inv.reverseCharge, 1);
+
+  const editada = await a.put(`/api/invoices/${inv.id}`, { reverseCharge: false });
+  assert.equal(editada.data.reverseCharge, 0);
+});
+
+test('la nota de exencion sale aunque la factura mezcle tipos de IVA', async () => {
+  // Una factura con una linea exenta y otra al 21% sigue necesitando la
+  // referencia al precepto para la parte exenta. Mirar solo el IVA total
+  // dejaba la mencion fuera.
+  const { invoicePdf } = await import('./invoice-pdf.js');
+  const inv = await draft({
+    items: [
+      { description: 'Sesión exenta', qty: 1, price: 100, vat: 0 },
+      { description: 'Material', qty: 1, price: 50, vat: 21 },
+    ],
+  });
+  const emitida = (await a.post(`/api/invoices/${inv.id}/issue`)).data;
+  assert.ok(emitida.totals.vat > 0, 'la factura si lleva IVA en total');
+  assert.ok(emitida.totals.vatBreakdown.some((t) => t.rate === 0), 'y una parte exenta');
+
+  const buf = await invoicePdf({ ...emitida, exemptionNote: 'EXENCION-DE-PRUEBA-20-UNO-3' });
+  const texto = await textoDelPdf(buf);
+  assert.ok(texto.includes('EXENCION-DE-PRUEBA-20-UNO-3'), 'la mencion tiene que salir en el PDF');
+});
+
+test('el PDF de una factura exenta lleva la referencia al precepto', async () => {
+  const { invoicePdf } = await import('./invoice-pdf.js');
+  const inv = (await a.post(`/api/invoices/${(await draft()).id}/issue`)).data;
+  const buf = await invoicePdf({
+    ...inv,
+    exemptionNote: 'Operación exenta conforme al artículo 20.Uno.3º de la Ley 37/1992.',
+  });
+  assert.equal(buf.subarray(0, 5).toString(), '%PDF-');
+  assert.ok(buf.length > 1500);
+});
+
+// ---- descarga de varias a la vez -----------------------------------------
+
+test('varias facturas en un solo PDF', async () => {
+  const uno = (await a.post(`/api/invoices/${(await draft()).id}/issue`)).data;
+  const dos = (await a.post(`/api/invoices/${(await draft()).id}/issue`)).data;
+
+  const res = await fetch(`${srv.base}/api/invoices/pdf?ids=${uno.id},${dos.id}`, {
+    headers: { cookie: cookieDe(a) },
+  });
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get('content-type'), 'application/pdf');
+  const buf = Buffer.from(await res.arrayBuffer());
+  assert.equal(buf.subarray(0, 5).toString(), '%PDF-');
+
+  // Dos facturas, dos paginas.
+  const paginas = (buf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) || []).length;
+  assert.equal(paginas, 2, 'una pagina por factura');
+});
+
+test('el PDF conjunto exige sesion y valida lo que recibe', async () => {
+  const sinSesion = await fetch(`${srv.base}/api/invoices/pdf?ids=1,2`);
+  assert.equal(sinSesion.status, 401);
+
+  const vacio = await a.get('/api/invoices/pdf?ids=');
+  assert.equal(vacio.status, 400);
+
+  const basura = await a.get('/api/invoices/pdf?ids=abc,-1,0');
+  assert.equal(basura.status, 400, 'identificadores que no valen se descartan');
+
+  const inexistente = await a.get('/api/invoices/pdf?ids=99999');
+  assert.equal(inexistente.status, 404);
 });

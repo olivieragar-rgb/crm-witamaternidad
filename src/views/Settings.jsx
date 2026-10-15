@@ -16,16 +16,24 @@ const TABS = [
   { id: 'users', label: 'Usuarios' },
 ];
 
+// Lo marcado como obligatorio lo exige el artículo 6.1 del RD 1619/2012
+// (Reglamento de facturación). Sin esos datos la factura no es válida.
 const ISSUER_FIELDS = [
-  { key: 'name', label: 'Nombre o razón social', required: true },
+  { key: 'name', label: 'Nombre y apellidos o razón social', required: true },
   { key: 'taxId', label: 'NIF / CIF', required: true },
-  { key: 'address', label: 'Dirección', required: true },
-  { key: 'postalCode', label: 'Código postal' },
+  { key: 'address', label: 'Domicilio fiscal', required: true },
+  { key: 'postalCode', label: 'Código postal', required: true },
   { key: 'city', label: 'Población', required: true },
   { key: 'province', label: 'Provincia' },
   { key: 'country', label: 'País' },
   { key: 'email', label: 'Email' },
   { key: 'phone', label: 'Teléfono' },
+  {
+    key: 'registryData',
+    label: 'Datos registrales',
+    hint: 'Solo si eres sociedad: Registro Mercantil, tomo, folio y hoja. Si eres autónoma, déjalo vacío.',
+    wide: true,
+  },
 ];
 
 /** Ajustes del negocio. Solo para administradoras. */
@@ -40,6 +48,7 @@ export default function Settings({ me }) {
     privacy: config.privacy,
     oncall: config.oncall,
     reminders: config.reminders,
+    calendar: config.calendar,
   });
   const [saved, setSaved] = useState('');
   const [error, setError] = useState('');
@@ -81,16 +90,25 @@ export default function Settings({ me }) {
       {tab === 'issuer' && (
         <div className="panel">
           <p className="muted">
-            Estos datos salen en todas tus facturas y son obligatorios para que sean válidas. Sin el nombre
-            fiscal, el NIF, la dirección y la población no se puede emitir.
+            Estos datos salen en todas tus facturas. Los marcados con * los exige el artículo 6.1 del
+            Reglamento de facturación (RD 1619/2012): sin ellos la factura no es válida, y por eso el
+            sistema no deja emitir hasta tenerlos.
           </p>
           <div className="form-grid">
-            {ISSUER_FIELDS.map((f) => (
+            {ISSUER_FIELDS.filter((f) => !f.wide).map((f) => (
               <Field key={f.key} label={f.label + (f.required ? ' *' : '')}>
                 <input value={draft.issuer[f.key]} onChange={set('issuer', f.key)} />
               </Field>
             ))}
           </div>
+          {ISSUER_FIELDS.filter((f) => f.wide).map((f) => (
+            <div key={f.key}>
+              <Field label={f.label}>
+                <input value={draft.issuer[f.key]} onChange={set('issuer', f.key)} />
+              </Field>
+              {f.hint && <p className="muted small">{f.hint}</p>}
+            </div>
+          ))}
           <SaveRow onSave={() => save('issuer')} saved={saved === 'issuer'} />
         </div>
       )}
@@ -204,6 +222,9 @@ export default function Settings({ me }) {
             Por defecto, 3 semanas antes (desde la 37, que es cuando el embarazo es a término) y 2 después.
           </p>
           <SaveRow onSave={() => save('oncall')} saved={saved === 'oncall'} />
+
+          <h3 className="pending-title">Ver las citas en Google Calendar</h3>
+          <CalendarFeed />
         </div>
       )}
 
@@ -428,6 +449,122 @@ function Catalogs() {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+/** Publicación del calendario como suscripción .ics. */
+function CalendarFeed() {
+  const config = useConfig();
+  const [cfg, setCfg] = useState(config.calendar);
+  const [error, setError] = useState('');
+  const [copiado, setCopiado] = useState(false);
+
+  const url = cfg.feedToken ? `${window.location.origin}/api/calendar/${cfg.feedToken}.ics` : '';
+
+  async function token(revoke) {
+    if (revoke && !confirm('Al revocar el enlace, el calendario dejará de actualizarse en Google. ¿Seguir?')) {
+      return;
+    }
+    setError('');
+    try {
+      setCfg(await api.calendarToken(revoke));
+      await config.reload();
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  async function guardar(campo, valor) {
+    setError('');
+    try {
+      setCfg(await api.saveSettings('calendar', { ...cfg, [campo]: valor ? 1 : 0 }));
+      await config.reload();
+    } catch (e) {
+      setError(e.message);
+    }
+  }
+
+  return (
+    <div className="feed-box">
+      <p className="muted">
+        Google Calendar puede suscribirse a un enlace y refrescarlo solo, así que tus citas aparecen también
+        ahí. Va en un sentido: del CRM a Google. Lo que apuntes en Google no vuelve aquí.
+      </p>
+
+      {error && <p className="error">{error}</p>}
+
+      {!cfg.feedToken ? (
+        <>
+          <p className="notice">
+            Este enlace publica <strong>a qué hora ves a cada clienta</strong>. Quien lo tenga lo ve todo,
+            sin contraseña. Genéralo solo si vas a usarlo, no lo pegues en ningún sitio público, y revócalo
+            si dudas.
+          </p>
+          <button className="primary" onClick={() => token(false)}>
+            Generar el enlace
+          </button>
+        </>
+      ) : (
+        <>
+          <Field label="Enlace de suscripción">
+            <input value={url} readOnly onFocus={(e) => e.target.select()} />
+          </Field>
+          <div className="save-row">
+            <button
+              onClick={() => {
+                navigator.clipboard?.writeText(url);
+                setCopiado(true);
+                setTimeout(() => setCopiado(false), 2500);
+              }}
+            >
+              Copiar
+            </button>
+            <button className="danger" onClick={() => token(true)}>
+              Revocar
+            </button>
+            {copiado && <span className="saved-note">Copiado</span>}
+          </div>
+
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={!!cfg.includeClientNames}
+              onChange={(e) => guardar('includeClientNames', e.target.checked)}
+            />
+            <span>Incluir el nombre de la clienta</span>
+          </label>
+          <p className="muted small">
+            Sin marcar, los eventos dicen qué hay y a qué hora, pero no con quién. Útil si compartes el
+            calendario del móvil con alguien.
+          </p>
+
+          <label className="check">
+            <input
+              type="checkbox"
+              checked={!!cfg.includeOnCall}
+              onChange={(e) => guardar('includeOnCall', e.target.checked)}
+            />
+            <span>Incluir las franjas de guardia</span>
+          </label>
+
+          <details className="fiscal">
+            <summary>Cómo añadirlo a Google Calendar</summary>
+            <ol className="muted small steps">
+              <li>Copia el enlace de arriba.</li>
+              <li>
+                En el ordenador, abre Google Calendar y, en «Otros calendarios», pulsa <strong>+</strong> y
+                luego <strong>Con URL</strong>.
+              </li>
+              <li>Pega el enlace y añade el calendario.</li>
+            </ol>
+            <p className="muted small">
+              Google refresca estos calendarios cuando quiere, y a veces tarda horas. No es un fallo del
+              CRM: es cómo funcionan las suscripciones por URL.
+            </p>
+          </details>
+        </>
+      )}
     </div>
   );
 }

@@ -13,6 +13,7 @@ import Settings from './views/Settings.jsx';
 import Privacy from './views/Privacy.jsx';
 import PasswordModal from './components/PasswordModal.jsx';
 import { ConfigProvider, useConfig } from './config.jsx';
+import DayBriefing from './components/DayBriefing.jsx';
 
 const NAV = [
   { id: 'dashboard', label: 'Inicio', icon: '◈' },
@@ -201,6 +202,8 @@ function Shell({ session, route, go, menuOpen, setMenuOpen, pwOpen, setPwOpen, l
       </main>
 
       {pwOpen && <PasswordModal onClose={() => setPwOpen(false)} />}
+      {/* Lo del dia, una vez al entrar. */}
+      <DayBriefing />
     </div>
   );
 }

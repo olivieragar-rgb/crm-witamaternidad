@@ -34,13 +34,31 @@ export const lineAmount = (it) => num(it.qty) * num(it.price) * (1 - num(it.disc
 export function invoiceTotals(items, irpfRate = 0) {
   let base = 0;
   let vat = 0;
+  // El art. 6.1.g y h del RD 1619/2012 pide el tipo impositivo aplicado y la
+  // cuota repercutida por separado. Con varios tipos en la misma factura hay
+  // que desglosarlos: un unico total de IVA no cumple.
+  const porTipo = new Map();
   for (const it of items) {
     const line = lineAmount(it);
+    const rate = num(it.vat);
+    const cuota = line * (rate / 100);
     base += line;
-    vat += line * (num(it.vat) / 100);
+    vat += cuota;
+    const acc = porTipo.get(rate) || { rate, base: 0, vat: 0 };
+    acc.base += line;
+    acc.vat += cuota;
+    porTipo.set(rate, acc);
   }
   const irpf = base * (num(irpfRate) / 100);
-  return { base: round(base), vat: round(vat), irpf: round(irpf), total: round(base + vat - irpf) };
+  return {
+    base: round(base),
+    vat: round(vat),
+    irpf: round(irpf),
+    total: round(base + vat - irpf),
+    vatBreakdown: [...porTipo.values()]
+      .sort((a, b) => a.rate - b.rate)
+      .map((x) => ({ rate: x.rate, base: round(x.base), vat: round(x.vat) })),
+  };
 }
 
 const parseSnapshot = (raw) => {
@@ -230,8 +248,8 @@ invoicesRouter.post('/', async (req, res, next) => {
     const invoicing = await getSetting('invoicing');
     const info = await run(
       `INSERT INTO invoices (number, clientId, date, status, notes, series, dueDate,
-                             paymentMethod, irpfRate, exemptionNote)
-       VALUES ('', ?, ?, 'Borrador', ?, ?, ?, ?, ?, ?)`,
+                             paymentMethod, irpfRate, exemptionNote, operationDate, reverseCharge)
+       VALUES ('', ?, ?, 'Borrador', ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         b.clientId ? Number(b.clientId) : null,
         String(b.date || today()),
@@ -241,6 +259,8 @@ invoicesRouter.post('/', async (req, res, next) => {
         String(b.paymentMethod || ''),
         b.irpfRate !== undefined ? num(b.irpfRate) : invoicing.irpfRate,
         String(b.exemptionNote ?? ''),
+        String(b.operationDate || ''),
+        b.reverseCharge ? 1 : 0,
       ],
     );
     await replaceItems(info.lastInsertRowid, Array.isArray(b.items) ? b.items : []);
@@ -251,7 +271,10 @@ invoicesRouter.post('/', async (req, res, next) => {
   }
 });
 
-const EDITABLE = ['clientId', 'date', 'notes', 'series', 'dueDate', 'paymentMethod', 'irpfRate', 'exemptionNote'];
+const EDITABLE = [
+  'clientId', 'date', 'notes', 'series', 'dueDate', 'paymentMethod', 'irpfRate', 'exemptionNote',
+  'operationDate', 'reverseCharge',
+];
 
 invoicesRouter.put('/:id', async (req, res, next) => {
   try {
@@ -272,14 +295,14 @@ invoicesRouter.put('/:id', async (req, res, next) => {
         next_[f] = b[f] ? Number(b[f]) : null;
       } else if (f === 'irpfRate') {
         next_[f] = num(b[f]);
+      } else if (f === 'reverseCharge') {
+        next_[f] = b[f] ? 1 : 0;
       } else {
         next_[f] = String(b[f]);
       }
     }
     await run(
-      `UPDATE invoices SET clientId = ?, date = ?, notes = ?, series = ?, dueDate = ?,
-                           paymentMethod = ?, irpfRate = ?, exemptionNote = ?
-       WHERE id = ?`,
+      `UPDATE invoices SET ${EDITABLE.map((f) => `${f} = ?`).join(', ')} WHERE id = ?`,
       [...EDITABLE.map((f) => next_[f]), id],
     );
     if (Array.isArray(b.items)) await replaceItems(id, b.items);

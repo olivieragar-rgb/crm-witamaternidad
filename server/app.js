@@ -3,12 +3,13 @@ import { all, get, run, ready } from './db.js';
 import { searchItems } from '../src/search.js';
 import { sendMail, mailerConfigured } from './mailer.js';
 import { invoiceXlsxBase64 } from './invoice-xlsx.js';
-import { invoicePdf } from './invoice-pdf.js';
+import { invoicePdf, invoicesPdf } from './invoice-pdf.js';
 import { invoicesRouter, invoiceWithItems, lineAmount } from './invoices.js';
 import { settingsRouter, getSetting } from './settings.js';
 import { catalogsRouter } from './catalogs.js';
 import { privacyRouter, auditRouter } from './privacy.js';
 import { onCallRouter } from './oncall.js';
+import { calendarRouter } from './calendar.js';
 import { expensesRouter, taxesRouter } from './expenses.js';
 import { remindersRouter } from './reminders.js';
 import { securityHeaders, sameOrigin } from './security.js';
@@ -69,6 +70,9 @@ app.use(async (req, res, next) => {
 // rutas de acceso, y solo despues exigir sesion para todo lo demas.
 app.use(sameOrigin);
 app.use(attachUser);
+// El feed del calendario lo piden los servidores de Google, que no pueden
+// iniciar sesion: va antes de requireAuth y lo protege su token secreto.
+app.use('/api/calendar', calendarRouter);
 app.use('/api', authRouter);
 app.use('/api/users', usersRouter);
 app.use('/api', requireAuth);
@@ -273,6 +277,39 @@ app.use(
 );
 
 // ---- invoices ------------------------------------------------------------
+
+/**
+ * Varias facturas en un solo PDF, una por pagina. Va ANTES de la ruta con
+ * :id, porque si no "pdf" se leeria como un identificador.
+ */
+app.get('/api/invoices/pdf', async (req, res, next) => {
+  try {
+    const ids = String(req.query.ids || '')
+      .split(',')
+      .map((x) => Number(x.trim()))
+      .filter((x) => Number.isInteger(x) && x > 0)
+      .slice(0, 200); // un tope para no tumbar la funcion con una peticion absurda
+    if (ids.length === 0) return res.status(400).json({ error: 'No has seleccionado ninguna factura.' });
+
+    const invoicing = await getSetting('invoicing');
+    const docs = [];
+    for (const id of ids) {
+      const inv = await invoiceWithItems(id);
+      if (inv) docs.push({ ...inv, ...pdfExtras(inv, invoicing) });
+    }
+    if (docs.length === 0) return res.status(404).json({ error: 'No se encontro ninguna.' });
+
+    // Por fecha y numero, que es como se archivan.
+    docs.sort((a, b) => String(a.date).localeCompare(String(b.date)) || String(a.number).localeCompare(String(b.number)));
+    const pdf = await invoicesPdf(docs);
+    await audit(req, { action: 'export_pdf', entity: 'invoices', detail: `${docs.length} facturas` });
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="facturas-${docs.length}.pdf"`);
+    res.send(pdf);
+  } catch (e) {
+    next(e);
+  }
+});
 
 app.use('/api/invoices', invoicesRouter);
 app.use('/api/settings', settingsRouter);
