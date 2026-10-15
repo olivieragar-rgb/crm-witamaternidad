@@ -8,6 +8,7 @@ import { invoicesRouter, invoiceWithItems, lineAmount } from './invoices.js';
 import { settingsRouter, getSetting } from './settings.js';
 import { catalogsRouter } from './catalogs.js';
 import { privacyRouter, auditRouter } from './privacy.js';
+import { questionnairesRouter } from './questionnaires.js';
 import { onCallRouter } from './oncall.js';
 import { calendarRouter } from './calendar.js';
 import { expensesRouter, taxesRouter } from './expenses.js';
@@ -185,6 +186,11 @@ function crud({ table, fields, required = [], searchText, orderBy = 'id DESC', b
 // Antes del crud generico: si no, /api/clients/retention entraria por
 // /api/clients/:id y "retention" se leeria como un identificador.
 app.use('/api/clients', privacyRouter);
+// Tambien antes del crud generico, y antes del middleware de auditoria de
+// /api/clients: estas rutas se auditan ellas mismas, con el tipo de
+// cuestionario en el detalle. Si cayeran en ese middleware, cada lectura
+// quedaria registrada como "client_list", que es falso.
+app.use('/api/clients', questionnairesRouter);
 app.use('/api/audit', auditRouter);
 app.use('/api/oncall', onCallRouter);
 app.use('/api/expenses', expensesRouter);
