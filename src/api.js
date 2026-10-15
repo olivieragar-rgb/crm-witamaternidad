@@ -83,6 +83,11 @@ export const api = {
     return req('GET', `/api/audit${qs ? `?${qs}` : ''}`);
   },
 
+  // Cuestionarios de alta
+  clientForms: () => req('GET', '/api/clients/forms'),
+  clientForm: (id, kind) => req('GET', `/api/clients/${id}/form?kind=${encodeURIComponent(kind)}`),
+  saveClientForm: (id, body) => req('PUT', `/api/clients/${id}/form`, body),
+
   // Recordatorios
   reminders: () => req('GET', '/api/reminders'),
   reminderPreview: (kind, id) => req('GET', `/api/reminders/preview/${kind}/${id}`),

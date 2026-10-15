@@ -29,7 +29,18 @@ export function Badge({ value }) {
   return <span className={'badge badge-' + key}>{value}</span>;
 }
 
-export function Modal({ title, onClose, children, onSubmit, submitLabel = 'Guardar', error, hideCancel }) {
+export function Modal({
+  title,
+  onClose,
+  children,
+  onSubmit,
+  submitLabel = 'Guardar',
+  // Hay modales donde cerrar no es cancelar: en el cuestionario que sale tras
+  // crear la ficha, la ficha ya esta guardada y lo que dice es "mas tarde".
+  cancelLabel = 'Cancelar',
+  error,
+  hideCancel,
+}) {
   return (
     <div className="modal-backdrop" onMouseDown={onClose}>
       <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
@@ -51,7 +62,7 @@ export function Modal({ title, onClose, children, onSubmit, submitLabel = 'Guard
             {/* En una vista de solo lectura no hay nada que cancelar. */}
             {!hideCancel && (
               <button type="button" onClick={onClose}>
-                Cancelar
+                {cancelLabel}
               </button>
             )}
             <button type="submit" className="primary">

@@ -716,6 +716,19 @@ td.empty {
   text-decoration: line-through;
 }
 
+/* Cuestionario de alta: pendiente avisa, completo descansa. Son las mismas
+   dos parejas de color que ya usan "Nuevo contacto" y "Activa", asi que la
+   tabla no gana un color nuevo. */
+.badge-pendiente {
+  background: var(--terracotta-light);
+  color: var(--terracotta-dark);
+}
+
+.badge-completo {
+  background: var(--green-light);
+  color: var(--green-dark);
+}
+
 /* ---- dashboard ---- */
 .stats {
   display: grid;
