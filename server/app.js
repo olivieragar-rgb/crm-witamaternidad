@@ -8,6 +8,7 @@ import { invoicesRouter, invoiceWithItems, lineAmount } from './invoices.js';
 import { settingsRouter, getSetting } from './settings.js';
 import { catalogsRouter } from './catalogs.js';
 import { privacyRouter, auditRouter } from './privacy.js';
+import { questionnairesRouter } from './questionnaires.js';
 import { onCallRouter } from './oncall.js';
 import { calendarRouter } from './calendar.js';
 import { expensesRouter, taxesRouter } from './expenses.js';
@@ -92,7 +93,7 @@ function normalize(field, value) {
 }
 // ---- generic CRUD --------------------------------------------------------
 
-function crud({ table, fields, required = [], searchText, orderBy = 'id DESC', beforeDelete }) {
+function crud({ table, fields, required = [], searchText, orderBy = 'id DESC', beforeDelete, afterDelete }) {
   const router = express.Router();
 
   router.get('/', async (req, res, next) => {
@@ -170,6 +171,9 @@ function crud({ table, fields, required = [], searchText, orderBy = 'id DESC', b
       }
       const info = await run(`DELETE FROM ${table} WHERE id = ?`, [id]);
       if (info.changes === 0) return res.status(404).json({ error: 'No encontrado' });
+      // Lo que cuelga del registro borrado y no tiene clave ajena que lo
+      // arrastre: se limpia aqui, cuando ya sabemos que el borrado ocurrio.
+      if (afterDelete) await afterDelete(id);
       await audit(req, { action: 'delete', entity: table, entityId: req.params.id });
       res.status(204).end();
     } catch (e) {
@@ -185,6 +189,11 @@ function crud({ table, fields, required = [], searchText, orderBy = 'id DESC', b
 // Antes del crud generico: si no, /api/clients/retention entraria por
 // /api/clients/:id y "retention" se leeria como un identificador.
 app.use('/api/clients', privacyRouter);
+// Tambien antes del crud generico, y antes del middleware de auditoria de
+// /api/clients: estas rutas se auditan ellas mismas, con el tipo de
+// cuestionario en el detalle. Si cayeran en ese middleware, cada lectura
+// quedaria registrada como "client_list", que es falso.
+app.use('/api/clients', questionnairesRouter);
 app.use('/api/audit', auditRouter);
 app.use('/api/oncall', onCallRouter);
 app.use('/api/expenses', expensesRouter);
@@ -222,6 +231,12 @@ app.use(
       return n > 0
         ? `No se puede borrar: tiene ${n} factura(s). Las facturas hay que conservarlas.`
         : null;
+    },
+    // El cuestionario de alta son datos de salud y no cuelga de clients con
+    // clave ajena, asi que una ficha borrada dejaria sus respuestas en la
+    // base para siempre. Borrar una ficha tiene que llevarselas.
+    afterDelete: async (id) => {
+      await run('DELETE FROM client_forms WHERE clientId = ?', [id]);
     },
   }),
 );
