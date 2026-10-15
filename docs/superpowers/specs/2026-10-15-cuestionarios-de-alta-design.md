@@ -168,9 +168,10 @@ ninguno. Insensible a mayúsculas y acentos.
 El emparejamiento por palabra clave se rompe si alguien renombra el valor del
 catálogo a algo sin esas palabras, y el catálogo es editable desde Ajustes a
 propósito. Por eso el paso 2 lleva un **selector de cuestionario** encima del
-formulario, con tres valores (lactancia, preparación al parto, ninguno),
-rellenado con lo que diga `kindForService`. El automático acierta casi siempre
-y, cuando falla, se corrige a mano sin tocar código.
+formulario, con los dos cuestionarios y abierto en el que diga
+`kindForService`. No hace falta un valor «ninguno»: dentro del formulario,
+ninguno es cerrarlo. El automático acierta casi siempre y, cuando falla, se
+corrige a mano sin tocar código.
 
 ## API
 
@@ -179,8 +180,10 @@ Módulo nuevo `server/questionnaires.js` con su router, montado en
 `privacyRouter`, con el mismo motivo: si va después, `/api/clients/5/form`
 entra por `/api/clients/:id`.
 
-- `GET /api/clients/forms` → `{ [clientId]: { kind, status } }`. Resumen para
-  pintar el estado en el listado con una sola petición.
+- `GET /api/clients/forms` → `{ [clientId]: Array<{ kind, status }> }`. Resumen
+  para pintar el estado en el listado con una sola petición. Es una lista por
+  clienta y no un objeto, porque una clienta puede tener los dos
+  cuestionarios.
 - `GET /api/clients/:id/form?kind=lactancia` → `{ kind, data, status, updatedAt }`,
   o `{ kind, data: {}, status: 'pendiente' }` si no hay nada guardado todavía.
 - `PUT /api/clients/:id/form` con `{ kind, data }` → guarda y devuelve lo
