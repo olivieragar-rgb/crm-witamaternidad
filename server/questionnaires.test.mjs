@@ -133,3 +133,33 @@ test('leer y guardar quedan en el registro de accesos', async () => {
   assert.ok(acciones.has('client_form_update'));
   assert.ok(acciones.has('client_form_list'));
 });
+
+test('el export de la clienta incluye el cuestionario con las preguntas legibles', async () => {
+  await a.put(`/api/clients/${lactancia}/form`, {
+    kind: 'lactancia',
+    data: { babyName: 'Leo', feedsPer24h: '10 tomas, 20 min' },
+  });
+  const r = await a.get(`/api/clients/${lactancia}/export`);
+  assert.equal(r.status, 200);
+  const q = r.data.cuestionarios;
+  assert.equal(q.length, 1);
+  assert.equal(q[0].cuestionario, 'Consultoría de lactancia');
+  const tomas = q[0].respuestas.find((x) => x.pregunta.startsWith('¿Cuántas tomas'));
+  assert.equal(tomas.respuesta, '10 tomas, 20 min');
+});
+
+test('anonimizar borra los cuestionarios y deja la ficha cerrada a datos nuevos', async () => {
+  const id = (await a.post('/api/clients', { name: 'Ana Gil', service: 'Lactancia' })).data.id;
+  await a.put(`/api/clients/${id}/form`, { kind: 'lactancia', data: { babyName: 'Mar' } });
+
+  await a.post(`/api/clients/${id}/anonymize`, { reason: 'Lo pide ella' });
+
+  const leido = await a.get(`/api/clients/${id}/form?kind=lactancia`);
+  assert.deepEqual(leido.data.data, {}, 'las respuestas tienen que haberse borrado');
+
+  const r = await a.put(`/api/clients/${id}/form`, { kind: 'lactancia', data: { babyName: 'Mar' } });
+  assert.equal(r.status, 409);
+
+  const exp = await a.get(`/api/clients/${id}/export`);
+  assert.deepEqual(exp.data.cuestionarios, []);
+});

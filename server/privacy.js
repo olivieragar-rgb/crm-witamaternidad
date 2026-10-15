@@ -7,6 +7,7 @@ import express from 'express';
 import { all, get, run } from './db.js';
 import { requireAdmin, audit } from './auth.js';
 import { getSetting } from './settings.js';
+import { clientForms } from './questionnaires.js';
 
 /** Campos personales que se vacían al anonimizar. */
 const PERSONAL = [
@@ -38,7 +39,10 @@ async function fullClientData(id) {
     'SELECT number, date, status, paidAt FROM invoices WHERE clientId = ? ORDER BY date',
     [id],
   );
-  return { client, appointments, invoices };
+  // Los cuestionarios de alta son el dato de salud mas detallado que hay
+  // aqui: sin ellos el export no es el expediente completo.
+  const cuestionarios = await clientForms(id);
+  return { client, appointments, invoices, cuestionarios };
 }
 
 /**
@@ -93,6 +97,9 @@ privacyRouter.post('/:id/anonymize', async (req, res, next) => {
     );
     // Las citas guardan notas de seguimiento, que también son datos de salud.
     await run("UPDATE appointments SET notes = '' WHERE clientId = ?", [id]);
+    // Y el cuestionario entero, que es dato de salud de principio a fin: aquí
+    // no hay nada que conservar, al contrario que en las facturas.
+    await run('DELETE FROM client_forms WHERE clientId = ?', [id]);
 
     await audit(req, {
       action: 'client_anonymize',
