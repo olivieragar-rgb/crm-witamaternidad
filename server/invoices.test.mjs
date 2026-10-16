@@ -165,6 +165,41 @@ test('el correlativo reinicia cada ano', async () => {
   assert.equal(res.data.number, '2027-0001');
 });
 
+test('el numero previsto avisa de lo que tocaria, y cada ano nuevo empieza de cero', async () => {
+  // 2026 ya tiene facturas: sigue su correlativo, no empieza de cero.
+  const en2026 = (await a.get('/api/invoices/next-number?date=2026-05-01')).data;
+  assert.ok(en2026.seq > 1 && en2026.number.startsWith('2026-'), JSON.stringify(en2026));
+  assert.equal(en2026.isFirstOfYear, false);
+
+  // Pedirlo no consume numero: dos veces, lo mismo.
+  assert.equal((await a.get('/api/invoices/next-number?date=2026-05-01')).data.number, en2026.number);
+
+  // Los 30 años siguientes empiezan de cero, sin tener que preparar nada.
+  for (let y = 2028; y <= 2057; y++) {
+    const r = (await a.get(`/api/invoices/next-number?date=${y}-01-02`)).data;
+    assert.equal(r.number, `${y}-0001`);
+    assert.equal(r.isFirstOfYear, true);
+  }
+
+  // Emitir en un ano nuevo no toca el historial del anterior.
+  const antes = (await a.get('/api/invoices?year=2026')).data;
+  const nueva = await draft({ date: '2031-01-02' });
+  assert.equal((await a.post(`/api/invoices/${nueva.id}/issue`)).data.number, '2031-0001');
+  assert.equal((await a.get('/api/invoices/next-number?date=2031-06-01')).data.number, '2031-0002');
+  const despues = (await a.get('/api/invoices?year=2026')).data;
+  assert.equal(despues.total, antes.total, 'las de 2026 siguen todas');
+  assert.equal((await a.get('/api/invoices/next-number?date=2026-05-01')).data.number, en2026.number);
+
+  // Y el listado ofrece los años que existen, sin tener ninguno escrito a mano.
+  const { years } = (await a.get('/api/invoices')).data;
+  assert.ok(years.includes('2026') && years.includes('2031'));
+});
+
+test('el numero previsto exige sesion', async () => {
+  const anon = makeClient(srv.base);
+  assert.equal((await anon.get('/api/invoices/next-number?date=2026-05-01')).status, 401);
+});
+
 test('la copia fiscal no cambia aunque cambie la ficha de la clienta', async () => {
   const inv = (await a.post(`/api/invoices/${(await draft()).id}/issue`)).data;
 

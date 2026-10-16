@@ -2247,3 +2247,11 @@ a.export {
   gap: 12px;
   margin-bottom: 6px;
 }
+
+/* Aviso de año nuevo en Facturas. */
+.year-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}

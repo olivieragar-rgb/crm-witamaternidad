@@ -231,6 +231,29 @@ invoicesRouter.get('/', async (req, res, next) => {
   }
 });
 
+/**
+ * El número que tendría una factura emitida con esa fecha y esa serie.
+ *
+ * Solo informa: no reserva nada, el definitivo se asigna al emitir. Existe
+ * para que se vea que cada año empieza de cero (2027-0001) mientras el
+ * historial del anterior queda intacto: el correlativo se cuenta por
+ * (serie, año de la fecha de factura), no hay nada que "cerrar" a mano.
+ *
+ * Va antes de `/:id`, o "next-number" se leería como un id.
+ */
+invoicesRouter.get('/next-number', async (req, res, next) => {
+  try {
+    const invoicing = await getSetting('invoicing');
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.date || '')) ? String(req.query.date) : today();
+    const series = String(req.query.series ?? invoicing.series);
+    const year = Number(date.slice(0, 4));
+    const seq = await nextSeq(series, year);
+    res.json({ number: formatNumber(series, year, seq), series, year, seq, isFirstOfYear: seq === 1 });
+  } catch (e) {
+    next(e);
+  }
+});
+
 invoicesRouter.get('/:id', async (req, res, next) => {
   try {
     const inv = await invoiceWithItems(Number(req.params.id));

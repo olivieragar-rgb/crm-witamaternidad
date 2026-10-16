@@ -122,7 +122,7 @@ export default function Settings({ me }) {
               <input
                 value={draft.invoicing.series}
                 onChange={set('invoicing', 'series')}
-                placeholder="(vacío: 2026-0001)"
+                placeholder={`(vacío: ${new Date().getFullYear()}-0001)`}
               />
             </Field>
             <Field label="Serie de las rectificativas">

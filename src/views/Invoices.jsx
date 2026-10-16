@@ -95,6 +95,31 @@ export default function Invoices({ initialFilter }) {
     setForm({ ...form, [f]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
   const rows = data.rows;
 
+  // Los años salen de las facturas que existen, más el actual: el 1 de enero
+  // de 2027 aparece "2027" aunque todavía no haya ninguna, y 2026 sigue ahí.
+  // No hay ningún año escrito a mano, así que sirve para los siguientes.
+  const currentYear = String(new Date().getFullYear());
+  const years = [...new Set([...data.years, currentYear])].sort().reverse();
+  // Año nuevo: hay historial, pero ninguna factura de este año todavía.
+  const newYear = data.years.length > 0 && !data.years.includes(currentYear);
+  const lastYear = data.years[0];
+  const series = settings?.invoicing?.series ?? '';
+
+  // El número que tocaría con la fecha del formulario: enseña que cada año
+  // empieza de cero sin tocar el historial del anterior.
+  const [preview, setPreview] = useState(null);
+  useEffect(() => {
+    if (!open || !form.date) return setPreview(null);
+    let vivo = true;
+    api
+      .nextInvoiceNumber(form.date)
+      .then((r) => vivo && setPreview(r))
+      .catch(() => vivo && setPreview(null));
+    return () => {
+      vivo = false;
+    };
+  }, [open, form.date]);
+
   const toggle = (id) =>
     setSelected((prev) => {
       const next = new Set(prev);
@@ -333,12 +358,28 @@ export default function Invoices({ initialFilter }) {
         </a>
       </div>
 
+      {newYear && (
+        <div className="notice year-notice">
+          <span>
+            <strong>Empieza {currentYear}.</strong> La numeración arranca de cero: la primera factura será la{' '}
+            <strong>
+              {series}
+              {currentYear}-0001
+            </strong>
+            . Las de {lastYear} siguen guardadas y las ves con el filtro Año.
+          </span>
+          <button type="button" className="primary" onClick={newRow}>
+            Empezar {currentYear}
+          </button>
+        </div>
+      )}
+
       <div className="filters">
         <span className="muted">Año:</span>
         <button className={'chip' + (year === '' ? ' active' : '')} onClick={() => filterSetter(setYear)('')}>
           Todos
         </button>
-        {data.years.map((y) => (
+        {years.map((y) => (
           <button
             key={y}
             className={'chip' + (year === y ? ' active' : '')}
@@ -423,7 +464,12 @@ export default function Invoices({ initialFilter }) {
               </td>
             </tr>
           ))}
-          {rows.length === 0 && <EmptyRow colSpan={7} />}
+          {rows.length === 0 && (
+            <EmptyRow
+              colSpan={7}
+              text={year && !data.years.includes(year) ? `Aún no hay facturas de ${year}.` : 'Sin resultados'}
+            />
+          )}
         </tbody>
         </table>
       </div>
@@ -502,6 +548,12 @@ export default function Invoices({ initialFilter }) {
             </Field>
             <Field label="Fecha">
               <input type="date" value={form.date} onChange={set('date')} />
+              {preview && (
+                <small className="muted">
+                  Se numerará {preview.number} al emitirla
+                  {preview.isFirstOfYear ? ` (la primera de ${preview.year}: la numeración empieza de cero)` : ''}.
+                </small>
+              )}
             </Field>
             <Field label="Vencimiento">
               <input type="date" value={form.dueDate} onChange={set('dueDate')} />

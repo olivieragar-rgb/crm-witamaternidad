@@ -62,6 +62,7 @@ export const api = {
     ).toString();
     return req('GET', `/api/invoices${qs ? `?${qs}` : ''}`);
   },
+  nextInvoiceNumber: (date) => req('GET', `/api/invoices/next-number?date=${encodeURIComponent(date)}`),
   issueInvoice: (id) => req('POST', `/api/invoices/${id}/issue`, {}),
   invoiceStatus: (id, body) => req('POST', `/api/invoices/${id}/status`, body),
   rectifyInvoice: (id, body) => req('POST', `/api/invoices/${id}/rectify`, body),

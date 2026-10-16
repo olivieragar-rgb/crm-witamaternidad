@@ -81,6 +81,11 @@ la original, que es lo que exige la norma.
 
 - El numero es `serie + ano + correlativo` (`2026-0001`, `R2026-0001`), unico
   por los tres a la vez, asi que el correlativo reinicia cada ano sin chocar.
+- **Cambio de año**: no hay nada que cerrar. El correlativo se cuenta por serie
+  y por año de la fecha de factura, así que la primera de 2027 sale como
+  `2027-0001` y las de 2026 siguen intactas. Facturas ofrece el año en curso
+  aunque aún no tenga facturas, avisa de que empieza de cero y el editor
+  enseña el número que tocaría. Ningún año está escrito en el código.
 - La copia de datos fiscales hace que una factura emitida no cambie aunque
   luego cambie la ficha de la clienta.
 - Cada factura emitida guarda un hash encadenado con la anterior. No se envia
