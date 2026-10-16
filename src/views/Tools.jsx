@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, fmtDate } from '../api.js';
-import { Field } from '../components/ui.jsx';
+import { Field, HelpTitle } from '../components/ui.jsx';
 import FppCalculator from '../components/FppCalculator.jsx';
 import GrowthChart from '../components/GrowthChart.jsx';
 import { percentileForWeight, readPercentile, daysBetween, formatAge, MAX_DAY } from '../lib/growth.js';
@@ -172,11 +172,11 @@ function GrowthPanel() {
 
       {points.length > 0 && (
         <div className="panel">
-          <h2>Peso para la edad</h2>
-          <p className="muted small">
-            Las curvas grises son los patrones de crecimiento de la OMS; la línea oscura, este bebé. Lo que
-            importa no es en qué percentil está, sino que siga su propia curva.
-          </p>
+          <HelpTitle
+            help="Las curvas grises son los patrones de crecimiento de la OMS; la línea oscura, este bebé. Lo que importa no es en qué percentil está, sino que siga su propia curva."
+          >
+            Peso para la edad
+          </HelpTitle>
           <GrowthChart sex={sex} points={points} />
 
           {/* La tabla no es un extra: es la forma accesible de leer lo mismo. */}

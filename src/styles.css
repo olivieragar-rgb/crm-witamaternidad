@@ -2255,3 +2255,78 @@ a.export {
   justify-content: space-between;
   gap: 16px;
 }
+
+/* ---- título con ayuda: el texto sale al dejar el ratón encima ---- */
+.help-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: var(--radius);
+  cursor: help;
+}
+
+.help-title:focus {
+  outline: none;
+}
+
+.help-title:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+
+/* La "i" avisa de que hay algo más sin quitarle protagonismo al título. */
+.help-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 17px;
+  height: 17px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font: italic 700 11px/1 var(--font-body);
+  opacity: 0.4;
+  transition: opacity var(--dur) var(--ease-out);
+}
+
+.help-title:hover .help-dot,
+.help-title:focus .help-dot {
+  opacity: 0.9;
+}
+
+/* En el body y fijo: ningún contenedor lo recorta ni lo descoloca. */
+.help-pop {
+  position: fixed;
+  z-index: 60;
+  max-width: 340px;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  background: var(--text);
+  color: var(--card);
+  font: 400 13px/1.5 var(--font-body);
+  letter-spacing: normal;
+  text-transform: none;
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
+  animation: help-in var(--dur-fast) var(--ease-out);
+}
+
+.help-pop code {
+  font-size: 12px;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.14);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+@keyframes help-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+
+/* Envoltorio de un control que lleva pop-up de ayuda (una pestaña): no cambia su aspecto. */
+.help-tip {
+  display: inline-flex;
+}

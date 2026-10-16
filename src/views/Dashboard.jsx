@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, eur, fmtDate, gestWeeks } from '../api.js';
 import ReminderModal from '../components/ReminderModal.jsx';
-import { Skeleton } from '../components/ui.jsx';
+import { Skeleton, HelpTitle } from '../components/ui.jsx';
 
 export default function Dashboard({ go }) {
   const [data, setData] = useState(null);
@@ -62,11 +62,10 @@ export default function Dashboard({ go }) {
       {pending && (pending.overdue.length > 0 || pending.appointments.length > 0) && (
         <div className="panel pending-panel">
           <div className="panel-head">
-            <h2>Pendiente de avisar</h2>
+            <HelpTitle help="Nada se envía solo. Aquí decides tú, y antes de mandarlo puedes leer el texto.">
+              Pendiente de avisar
+            </HelpTitle>
           </div>
-          <p className="muted small">
-            Nada se envía solo. Aquí decides tú, y antes de mandarlo puedes leer el texto.
-          </p>
 
           {pending.overdue.length > 0 && (
             <>

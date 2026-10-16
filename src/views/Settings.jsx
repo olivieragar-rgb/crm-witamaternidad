@@ -1,19 +1,50 @@
 import { useState } from 'react';
 import { api } from '../api.js';
-import { Field, Skeleton } from '../components/ui.jsx';
+import { Field, Skeleton, HelpTitle, HelpTip } from '../components/ui.jsx';
 import { useConfig } from '../config.jsx';
 import Users from './Users.jsx';
 
 const TABS = [
   { id: 'issuer', label: 'Datos fiscales' },
-  { id: 'invoicing', label: 'Facturación' },
-  { id: 'brand', label: 'Marca' },
+  { id: 'invoicing', label: 'Facturación', help: 'Valores por defecto al crear una factura. Cada factura puede luego llevar los suyos.' },
+  { id: 'brand', label: 'Marca', help: 'Lo que se ve en la barra lateral de la aplicación.' },
   { id: 'agenda', label: 'Agenda' },
-  { id: 'reminders', label: 'Recordatorios' },
-  { id: 'emailTemplate', label: 'Email' },
-  { id: 'privacy', label: 'Privacidad' },
-  { id: 'catalogs', label: 'Listas' },
-  { id: 'users', label: 'Usuarios' },
+  {
+    id: 'reminders',
+    label: 'Recordatorios',
+    help: 'Nada se envía solo: el inicio avisa de lo que hay pendiente y tú decides. Aquí se define cuándo algo cuenta como pendiente y qué dice el correo.',
+  },
+  {
+    id: 'emailTemplate',
+    label: 'Email',
+    help: (
+      <>
+        Texto del correo con el que se envía una factura. Puedes usar los marcadores <code>{'{{clienta}}'}</code>,
+        <code>{'{{numero}}'}</code>, <code>{'{{fecha}}'}</code>, <code>{'{{total}}'}</code> y <code>{'{{negocio}}'}</code>.
+      </>
+    ),
+  },
+  {
+    id: 'privacy',
+    label: 'Privacidad',
+    help: 'Los datos de embarazo, lactancia y las notas son datos de salud (categoría especial del Art. 9 del RGPD). El texto de consentimiento se guarda con su versión, para que puedas demostrar qué aceptó cada clienta y cuándo.',
+  },
+  {
+    id: 'catalogs',
+    label: 'Listas',
+    help: (
+      <>
+        Las opciones que aparecen en los desplegables. <strong>Desactivar</strong> una la quita de los
+        formularios nuevos pero no toca las fichas que ya la usaban; <strong>borrar</strong> solo tiene
+        sentido para una opción recién creada por error.
+      </>
+    ),
+  },
+  {
+    id: 'users',
+    label: 'Usuarios',
+    help: 'Quien puede entrar al CRM. Mientras trabajes sola basta con tu cuenta; esto es lo que usarás el día que entren más profesionales, y es lo que hace que el registro de accesos signifique algo.',
+  },
 ];
 
 // Lo marcado como obligatorio lo exige el artículo 6.1 del RD 1619/2012
@@ -77,11 +108,20 @@ export default function Settings({ me }) {
       </div>
 
       <div className="filters">
-        {TABS.map((t) => (
-          <button key={t.id} className={'chip' + (tab === t.id ? ' active' : '')} onClick={() => setTab(t.id)}>
-            {t.label}
-          </button>
-        ))}
+        {TABS.map((t) => {
+          const chip = (
+            <button key={t.id} className={'chip' + (tab === t.id ? ' active' : '')} onClick={() => setTab(t.id)}>
+              {t.label}
+            </button>
+          );
+          return t.help ? (
+            <HelpTip key={t.id} help={t.help}>
+              {chip}
+            </HelpTip>
+          ) : (
+            chip
+          );
+        })}
       </div>
 
       {error && <p className="error">{error}</p>}
@@ -114,9 +154,6 @@ export default function Settings({ me }) {
 
       {tab === 'invoicing' && (
         <div className="panel">
-          <p className="muted">
-            Valores por defecto al crear una factura. Cada factura puede luego llevar los suyos.
-          </p>
           <div className="form-grid">
             <Field label="Serie de las facturas">
               <input
@@ -175,7 +212,6 @@ export default function Settings({ me }) {
 
       {tab === 'brand' && (
         <div className="panel">
-          <p className="muted">Lo que se ve en la barra lateral de la aplicación.</p>
           <div className="form-grid">
             <Field label="Nombre">
               <input value={draft.brand.name} onChange={set('brand', 'name')} />
@@ -197,10 +233,6 @@ export default function Settings({ me }) {
 
       {tab === 'reminders' && (
         <div className="panel">
-          <p className="muted">
-            Nada se envía solo: el inicio avisa de lo que hay pendiente y tú decides. Aquí se define cuándo
-            algo cuenta como pendiente y qué dice el correo.
-          </p>
           <div className="form-grid">
             <Field label="Días de cortesía sin vencimiento">
               <input
@@ -226,11 +258,18 @@ export default function Settings({ me }) {
             esto no vencería nunca y no aparecería en ningún aviso.
           </p>
 
-          <h3 className="pending-title">Recordatorio de pago</h3>
-          <p className="muted small">
-            Marcadores: <code>{'{{clienta}}'}</code> <code>{'{{numero}}'}</code> <code>{'{{total}}'}</code>{' '}
-            <code>{'{{vencimiento}}'}</code> <code>{'{{negocio}}'}</code>
-          </p>
+          <HelpTitle
+            as="h3"
+            className="pending-title"
+            help={
+              <>
+                Marcadores: <code>{'{{clienta}}'}</code> <code>{'{{numero}}'}</code> <code>{'{{total}}'}</code>{' '}
+                <code>{'{{vencimiento}}'}</code> <code>{'{{negocio}}'}</code>
+              </>
+            }
+          >
+            Recordatorio de pago
+          </HelpTitle>
           <Field label="Asunto">
             <input value={draft.reminders.invoiceSubject} onChange={set('reminders', 'invoiceSubject')} />
           </Field>
@@ -238,11 +277,18 @@ export default function Settings({ me }) {
             <textarea rows={5} value={draft.reminders.invoiceBody} onChange={set('reminders', 'invoiceBody')} />
           </Field>
 
-          <h3 className="pending-title">Recordatorio de cita</h3>
-          <p className="muted small">
-            Marcadores: <code>{'{{clienta}}'}</code> <code>{'{{fecha}}'}</code> <code>{'{{hora}}'}</code>{' '}
-            <code>{'{{servicio}}'}</code> <code>{'{{modalidad}}'}</code> <code>{'{{negocio}}'}</code>
-          </p>
+          <HelpTitle
+            as="h3"
+            className="pending-title"
+            help={
+              <>
+                Marcadores: <code>{'{{clienta}}'}</code> <code>{'{{fecha}}'}</code> <code>{'{{hora}}'}</code>{' '}
+                <code>{'{{servicio}}'}</code> <code>{'{{modalidad}}'}</code> <code>{'{{negocio}}'}</code>
+              </>
+            }
+          >
+            Recordatorio de cita
+          </HelpTitle>
           <Field label="Asunto">
             <input
               value={draft.reminders.appointmentSubject}
@@ -263,11 +309,6 @@ export default function Settings({ me }) {
 
       {tab === 'emailTemplate' && (
         <div className="panel">
-          <p className="muted">
-            Texto del correo con el que se envía una factura. Puedes usar los marcadores{' '}
-            <code>{'{{clienta}}'}</code>, <code>{'{{numero}}'}</code>, <code>{'{{fecha}}'}</code>,{' '}
-            <code>{'{{total}}'}</code> y <code>{'{{negocio}}'}</code>.
-          </p>
           <Field label="Asunto">
             <input value={draft.emailTemplate.subject} onChange={set('emailTemplate', 'subject')} />
           </Field>
@@ -290,11 +331,6 @@ export default function Settings({ me }) {
 
       {tab === 'privacy' && (
         <div className="panel">
-          <p className="muted">
-            Los datos de embarazo, lactancia y las notas son datos de salud: categoría especial del Art. 9
-            del RGPD. El texto de consentimiento se guarda con versión, para poder demostrar qué aceptó cada
-            clienta y cuándo.
-          </p>
           <div className="form-grid">
             <Field label="Años de conservación">
               <input
@@ -324,10 +360,6 @@ export default function Settings({ me }) {
 
       {tab === 'users' && (
         <div className="panel">
-          <p className="muted">
-            Quien puede entrar al CRM. Mientras trabajes sola basta con tu cuenta; esto es lo que usarás el
-            día que entren más profesionales, y es lo que hace que el registro de accesos signifique algo.
-          </p>
           <Users me={me} embedded />
         </div>
       )}
@@ -354,11 +386,6 @@ function Catalogs() {
 
   return (
     <div className="panel">
-      <p className="muted">
-        Las opciones que aparecen en los desplegables. <strong>Desactivar</strong> una la quita de los
-        formularios nuevos pero no toca las fichas que ya la usaban; <strong>borrar</strong> solo tiene
-        sentido para una opción recién creada por error.
-      </p>
       {error && <p className="error">{error}</p>}
 
       {Object.entries(config.catalogTypes).map(([type, label]) => (

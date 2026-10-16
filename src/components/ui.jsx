@@ -1,4 +1,106 @@
 // Small shared UI building blocks used across the module views.
+import { useId, useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+
+/**
+ * El pop-up de ayuda: sale al dejar el ratón encima (o el foco, o un toque en
+ * pantalla táctil) y se va al quitarlo.
+ *
+ * Se pinta en el `body` (portal): un contenedor con transform u `overflow` lo
+ * recortaría o lo descolocaría. Una vez pintado se sabe cuánto mide, y se
+ * coloca debajo del elemento, sin salirse por los lados y encima si por
+ * abajo no cabe.
+ */
+function useHelpPop(help) {
+  const id = useId();
+  const anchorRef = useRef(null);
+  const popRef = useRef(null);
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState(null);
+
+  useLayoutEffect(() => {
+    if (!open || !anchorRef.current || !popRef.current) return;
+    const a = anchorRef.current.getBoundingClientRect();
+    const w = popRef.current.offsetWidth;
+    const h = popRef.current.offsetHeight;
+    const left = Math.max(12, Math.min(a.left, window.innerWidth - w - 12));
+    const debajo = a.bottom + 8;
+    const top = debajo + h + 12 > window.innerHeight ? Math.max(12, a.top - h - 8) : debajo;
+    setPos({ left, top });
+  }, [open]);
+
+  const show = () => setOpen(true);
+  const hide = () => {
+    setOpen(false);
+    setPos(null);
+  };
+
+  return {
+    anchorRef,
+    bind: {
+      'aria-describedby': open ? id : undefined,
+      onMouseEnter: show,
+      onMouseLeave: hide,
+      onFocus: show,
+      onBlur: hide,
+      onClick: show,
+      onKeyDown: (e) => e.key === 'Escape' && hide(),
+    },
+    popup:
+      open &&
+      createPortal(
+        <span
+          ref={popRef}
+          id={id}
+          role="tooltip"
+          className="help-pop"
+          style={pos ? { left: pos.left, top: pos.top } : { left: 0, top: 0, visibility: 'hidden' }}
+        >
+          {help}
+        </span>,
+        document.body,
+      ),
+  };
+}
+
+/**
+ * Título con su texto de ayuda escondido: sustituye a los párrafos que
+ * ocupaban sitio debajo del título todo el rato. La "i" avisa de que hay algo
+ * más sin quitarle protagonismo.
+ *
+ * @param {{ as?: string, help: import('react').ReactNode, className?: string, children: import('react').ReactNode }} props
+ */
+export function HelpTitle({ as: Tag = 'h2', help, className, children }) {
+  const { anchorRef, bind, popup } = useHelpPop(help);
+  return (
+    <Tag className={className}>
+      <span ref={anchorRef} className="help-title" tabIndex={0} {...bind}>
+        {children}
+        <i className="help-dot" aria-hidden="true">
+          i
+        </i>
+      </span>
+      {popup}
+    </Tag>
+  );
+}
+
+/**
+ * Lo mismo para un control que ya es interactivo (una pestaña): le saca el
+ * pop-up sin cambiarle el aspecto ni el comportamiento. El foco del botón de
+ * dentro sube hasta aquí, así que también sale con el teclado.
+ *
+ * @param {{ help: import('react').ReactNode, children: import('react').ReactNode }} props
+ */
+export function HelpTip({ help, children }) {
+  const { anchorRef, bind, popup } = useHelpPop(help);
+  return (
+    <span ref={anchorRef} className="help-tip" {...bind}>
+      {children}
+      {popup}
+    </span>
+  );
+}
 
 export function Toolbar({ title, query, setQuery, onNew, newLabel = 'Nueva' }) {
   return (

@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react';
 import { api, fmtDate } from '../api.js';
-import { EmptyRow, Skeleton } from '../components/ui.jsx';
+import { EmptyRow, Skeleton, HelpTip } from '../components/ui.jsx';
 import { useConfig } from '../config.jsx';
 
 const TABS = [
   { id: 'retention', label: 'Conservación' },
-  { id: 'audit', label: 'Registro de accesos' },
+  {
+    id: 'audit',
+    label: 'Registro de accesos',
+    help: 'Quién ha entrado, qué ha consultado y qué ha cambiado. Con datos de salud hay que poder demostrarlo, así que este registro es de solo lectura: no se puede editar ni borrar desde la aplicación.',
+  },
 ];
 
 const ACTION_LABELS = {
@@ -45,11 +49,20 @@ export default function Privacy() {
         <h1>Privacidad</h1>
       </div>
       <div className="filters">
-        {TABS.map((t) => (
-          <button key={t.id} className={'chip' + (tab === t.id ? ' active' : '')} onClick={() => setTab(t.id)}>
-            {t.label}
-          </button>
-        ))}
+        {TABS.map((t) => {
+          const chip = (
+            <button key={t.id} className={'chip' + (tab === t.id ? ' active' : '')} onClick={() => setTab(t.id)}>
+              {t.label}
+            </button>
+          );
+          return t.help ? (
+            <HelpTip key={t.id} help={t.help}>
+              {chip}
+            </HelpTip>
+          ) : (
+            chip
+          );
+        })}
       </div>
       {tab === 'retention' ? <Retention /> : <AuditLog />}
     </section>
@@ -144,11 +157,6 @@ function AuditLog() {
 
   return (
     <div className="panel">
-      <p className="muted">
-        Quién ha entrado, qué ha consultado y qué ha cambiado. Con datos de salud hay que poder demostrarlo,
-        así que este registro es de solo lectura: no se puede editar ni borrar desde la aplicación.
-      </p>
-
       <div className="filters">
         <span className="muted">Filtrar:</span>
         {['', 'client_view', 'client_export', 'client_anonymize', 'login', 'login_fail'].map((act) => (

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { fmtDate } from '../api.js';
+import { HelpTitle } from './ui.jsx';
 
 // Calculadora de fecha probable de parto (regla de Naegele):
 // FPP = fecha de la última regla (FUM) + 280 días.
@@ -22,8 +23,7 @@ export default function FppCalculator() {
 
   return (
     <div className="panel fpp-calc">
-      <h2>Calculadora de FPP</h2>
-      <p className="muted fpp-help">Introduce la fecha de la última regla (FUM).</p>
+      <HelpTitle help="Introduce la fecha de la última regla (FUM).">Calculadora de FPP</HelpTitle>
       <label className="field">
         <span>Última regla (FUM)</span>
         <input type="date" value={lmp} onChange={(e) => setLmp(e.target.value)} />
