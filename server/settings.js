@@ -51,13 +51,9 @@ export const DEFAULTS = {
     appointmentSubject: 'Tu cita del {{fecha}}',
     appointmentBody:
       'Hola {{clienta}},\n' +
-      'Te recordamos tu cita de {{servicio}} el {{fecha}} a las {{hora}} ({{modalidad}}).\n' +
-      'Si no te viene bien, avisanos y la cambiamos.\n' +
-      'Nos vemos.',
-  },
-  oncall: {
-    weeksBefore: 3,
-    weeksAfter: 2,
+      'Te recordamos que tienes cita de {{servicio}} el {{fecha}} a las {{hora}} ({{modalidad}}).\n' +
+      'Si no te viene bien, avísanos y buscamos otro hueco.\n' +
+      '¡Nos vemos!',
   },
   // Publicacion del calendario como suscripcion .ics. Arranca apagado: lo
   // que publica son datos personales y encenderlo tiene que ser una decision,

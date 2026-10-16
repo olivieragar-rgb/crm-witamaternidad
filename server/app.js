@@ -9,7 +9,6 @@ import { settingsRouter, getSetting } from './settings.js';
 import { catalogsRouter } from './catalogs.js';
 import { privacyRouter, auditRouter } from './privacy.js';
 import { questionnairesRouter } from './questionnaires.js';
-import { onCallRouter } from './oncall.js';
 import { calendarRouter } from './calendar.js';
 import { expensesRouter, taxesRouter } from './expenses.js';
 import { remindersRouter } from './reminders.js';
@@ -195,7 +194,6 @@ app.use('/api/clients', privacyRouter);
 // quedaria registrada como "client_list", que es falso.
 app.use('/api/clients', questionnairesRouter);
 app.use('/api/audit', auditRouter);
-app.use('/api/oncall', onCallRouter);
 app.use('/api/expenses', expensesRouter);
 app.use('/api/taxes', taxesRouter);
 app.use('/api/reminders', remindersRouter);

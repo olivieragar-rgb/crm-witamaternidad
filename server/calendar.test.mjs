@@ -97,14 +97,14 @@ test('una cita cancelada no se publica', async () => {
   assert.ok(!ics.includes('UID:cita-2@wita-crm'));
 });
 
-test('las guardias salen como evento de dia completo', async () => {
+test('la fecha probable de parto sale como evento de un dia completo', async () => {
   const { feedToken } = (await a.get('/api/settings')).data.calendar;
   const ics = (await makeClient(srv.base).get(`/api/calendar/${feedToken}.ics`)).data;
-  // FPP 2026-12-01, 3 semanas antes = 10 de noviembre.
-  assert.match(ics, /DTSTART;VALUE=DATE:20261110/);
-  // 2 despues = 15 de diciembre, y DTEND es exclusivo: 16.
-  assert.match(ics, /DTEND;VALUE=DATE:20261216/);
-  assert.match(ics, /SUMMARY:Guardia/);
+  // FPP 2026-12-01: ese dia y nada mas. DTEND es exclusivo, asi que el 2.
+  assert.match(ics, /DTSTART;VALUE=DATE:20261201/);
+  assert.match(ics, /DTEND;VALUE=DATE:20261202/);
+  assert.match(ics, /SUMMARY:Fecha probable de parto/);
+  assert.ok(!/Guardia/.test(ics), 'ya no hay guardias');
 });
 
 // ---- privacidad -----------------------------------------------------------

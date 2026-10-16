@@ -104,24 +104,22 @@ export async function buildIcs({ nombre, conNombres, conPartos }) {
   }
 
   if (conPartos) {
-    const { weeksBefore, weeksAfter } = await getSetting('oncall');
     const clientas = await all(
       `SELECT id, name, dueDate FROM clients
        WHERE dueDate <> '' AND (anonymizedAt IS NULL OR anonymizedAt = '')`,
     );
     for (const c of clientas) {
-      const inicio = desplazar(c.dueDate, -Math.round(weeksBefore * 7));
+      const inicio = desplazar(c.dueDate, 0);
       // DTEND de un evento de día completo es exclusivo: un día más.
-      const fin = desplazar(c.dueDate, Math.round(weeksAfter * 7) + 1);
+      const fin = desplazar(c.dueDate, 1);
       if (!inicio || !fin) continue;
       lineas.push(
         'BEGIN:VEVENT',
-        `UID:guardia-${c.id}@wita-crm`,
+        `UID:fpp-${c.id}@wita-crm`,
         `DTSTAMP:${stamp()}`,
         `DTSTART;VALUE=DATE:${toIcsDate(inicio)}`,
         `DTEND;VALUE=DATE:${toIcsDate(fin)}`,
-        fold(`SUMMARY:Guardia${conNombres ? ` · ${esc(c.name)}` : ''}`),
-        fold(`DESCRIPTION:Ventana de disponibilidad alrededor de la fecha probable de parto (${esc(c.dueDate)}).`),
+        fold(`SUMMARY:Fecha probable de parto${conNombres ? ` · ${esc(c.name)}` : ''}`),
         'TRANSP:TRANSPARENT',
         'END:VEVENT',
       );

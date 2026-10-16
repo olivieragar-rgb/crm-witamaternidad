@@ -8,7 +8,7 @@ const TABS = [
   { id: 'issuer', label: 'Datos fiscales' },
   { id: 'invoicing', label: 'Facturación' },
   { id: 'brand', label: 'Marca' },
-  { id: 'oncall', label: 'Agenda' },
+  { id: 'agenda', label: 'Agenda' },
   { id: 'reminders', label: 'Recordatorios' },
   { id: 'emailTemplate', label: 'Email' },
   { id: 'privacy', label: 'Privacidad' },
@@ -46,7 +46,6 @@ export default function Settings({ me }) {
     brand: config.brand,
     emailTemplate: config.emailTemplate,
     privacy: config.privacy,
-    oncall: config.oncall,
     reminders: config.reminders,
     calendar: config.calendar,
   });
@@ -189,40 +188,8 @@ export default function Settings({ me }) {
         </div>
       )}
 
-      {tab === 'oncall' && (
+      {tab === 'agenda' && (
         <div className="panel">
-          <p className="muted">
-            Las semanas de disponibilidad permanente alrededor de la fecha probable de parto. El calendario
-            pinta esa franja para cada clienta y avisa cuando dos se solapan, que es cuando harían falta dos
-            personas.
-          </p>
-          <div className="form-grid">
-            <Field label="Semanas antes de la FPP">
-              <input
-                type="number"
-                min="0"
-                max="12"
-                step="0.5"
-                value={draft.oncall.weeksBefore}
-                onChange={set('oncall', 'weeksBefore')}
-              />
-            </Field>
-            <Field label="Semanas después de la FPP">
-              <input
-                type="number"
-                min="0"
-                max="12"
-                step="0.5"
-                value={draft.oncall.weeksAfter}
-                onChange={set('oncall', 'weeksAfter')}
-              />
-            </Field>
-          </div>
-          <p className="muted small">
-            Por defecto, 3 semanas antes (desde la 37, que es cuando el embarazo es a término) y 2 después.
-          </p>
-          <SaveRow onSave={() => save('oncall')} saved={saved === 'oncall'} />
-
           <h3 className="pending-title">Ver las citas en Google Calendar</h3>
           <CalendarFeed />
         </div>
@@ -545,7 +512,7 @@ function CalendarFeed() {
               checked={!!cfg.includeOnCall}
               onChange={(e) => guardar('includeOnCall', e.target.checked)}
             />
-            <span>Incluir las franjas de guardia</span>
+            <span>Incluir las fechas probables de parto</span>
           </label>
 
           <details className="fiscal">

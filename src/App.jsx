@@ -191,8 +191,8 @@ function Shell({ session, route, go, menuOpen, setMenuOpen, pwOpen, setPwOpen, l
       <main className="content" id="contenido" tabIndex={-1} key={route.view}>
         {route.view === 'dashboard' && <Dashboard go={go} />}
         {route.view === 'clients' && <Clients initialFilter={route.filter} />}
-        {route.view === 'calendar' && <Calendar />}
-        {route.view === 'appointments' && <Appointments />}
+        {route.view === 'calendar' && <Calendar go={go} />}
+        {route.view === 'appointments' && <Appointments initialFilter={route.filter} />}
         {route.view === 'services' && <Services />}
         {route.view === 'invoices' && <Invoices initialFilter={route.filter} />}
         {route.view === 'expenses' && <Expenses />}

@@ -157,14 +157,11 @@ Desactivar una opcion de una lista la quita de los formularios nuevos pero no
 toca las fichas que ya la usaban, y renombrarla tampoco reescribe lo ya
 guardado: cambiar la lista de opciones no deberia reescribir el pasado.
 
-## Agenda de guardia
+## Fecha probable de parto en el calendario
 
-Alrededor de la fecha probable de parto hay unas semanas de disponibilidad
-permanente, configurables en Ajustes (por defecto 3 antes y 2 despues). El
-calendario pinta esa franja para cada clienta, en verde con una guardia y en
-terracota cuando hay dos a la vez, y el formulario de clienta avisa del choque
-mientras se escribe la FPP, que es cuando sirve de algo. Avisa, no bloquea.
-
+El calendario marca con un corazón el día de la fecha probable de parto de cada
+clienta; al pasar el ratón por encima sale su nombre. Una ficha anonimizada ya
+no tiene fecha, así que desaparece del calendario.
 ## Gastos e impuestos
 
 Los gastos se registran con base, IVA, categoria y si son deducibles. La vista
@@ -246,7 +243,6 @@ server/invoices.js   Facturacion: borrador, emision, rectificativas
 server/invoice-pdf.js  PDF de factura
 server/settings.js   Ajustes del negocio (datos fiscales, facturacion, marca)
 server/catalogs.js   Listas desplegables editables
-server/oncall.js     Ventanas de guardia alrededor de la FPP
 server/expenses.js   Gastos y resumen del 303 y el 130
 server/reminders.js  Recordatorios de cobro y de cita
 server/calendar.js   Publicacion del calendario como suscripcion .ics

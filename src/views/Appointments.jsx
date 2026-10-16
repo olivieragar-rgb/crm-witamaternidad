@@ -12,7 +12,7 @@ const text = (a) => `${a.clientName} ${a.serviceName} ${a.mode} ${a.status} ${a.
 const toInput = (d) => (d ? d.replace(' ', 'T').slice(0, 16) : '');
 const toStore = (d) => (d ? d.replace('T', ' ') : '');
 
-export default function Appointments() {
+export default function Appointments({ initialFilter }) {
   const config = useConfig();
   const [rows, setRows] = useState([]);
   const [clients, setClients] = useState([]);
@@ -37,8 +37,25 @@ export default function Appointments() {
   const MODES = options(config.catalogs.mode, form.mode);
   const STATUSES = options(config.catalogs.appointmentStatus, form.status);
 
-  function newRow() {
-    setForm({ ...EMPTY, status: options(config.catalogs.appointmentStatus)[0] ?? '' });
+  // Venimos del calendario: o a crear una cita ese día, o a editar una.
+  const [pendiente, setPendiente] = useState(initialFilter || null);
+  useEffect(() => {
+    if (!pendiente) return;
+    if (pendiente.newDate) {
+      // Se pone el día; la hora arranca a las 10:00 y se cambia aquí mismo.
+      newRow(`${pendiente.newDate}T10:00`);
+      setPendiente(null);
+    } else if (pendiente.editId) {
+      const cita = rows.find((r) => r.id === pendiente.editId);
+      if (cita) {
+        edit(cita);
+        setPendiente(null);
+      }
+    }
+  }, [pendiente, rows]);
+
+  function newRow(date = '') {
+    setForm({ ...EMPTY, date, status: options(config.catalogs.appointmentStatus)[0] ?? '' });
     setEditingId(null);
     setError('');
     setOpen(true);
@@ -68,7 +85,7 @@ export default function Appointments() {
 
   return (
     <section>
-      <Toolbar title="Citas" query={query} setQuery={setQuery} onNew={newRow} newLabel="Nueva cita" />
+      <Toolbar title="Citas" query={query} setQuery={setQuery} onNew={() => newRow()} newLabel="Nueva cita" />
 
       <table className="grid-table">
         <thead>

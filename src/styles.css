@@ -1582,45 +1582,75 @@ a.btn:hover {
 }
 
 
-/* ---- guardia en el calendario ---- */
-.cal-cell.on-call {
-  background: linear-gradient(to bottom, var(--green-light) 0 4px, transparent 4px);
-}
-
-.cal-cell.on-call-clash {
-  background: linear-gradient(to bottom, var(--terracotta-light) 0 4px, transparent 4px);
-}
-
-.guard-bar {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 4px;
-  display: flex;
-  gap: 1px;
-}
-
-.guard-dot {
-  flex: 1;
-  background: var(--green);
-  border-radius: 1px;
-}
-
-.on-call-clash .guard-dot {
-  background: var(--terracotta);
-}
-
+/* ---- fecha probable de parto en el calendario ---- */
 .cal-cell {
   position: relative;
 }
 
-.dot-guard {
-  background: var(--green);
+.due-markers {
+  position: absolute;
+  top: 5px;
+  right: 6px;
+  display: flex;
+  gap: 3px;
 }
 
-.dot-clash {
+.due-marker {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--terracotta-light);
+  border: 1px solid var(--terracotta);
+  color: var(--terracotta-dark);
+  cursor: help;
+}
+
+.due-marker:hover {
   background: var(--terracotta);
+  color: #fff;
+}
+
+/* Fijo y en el body: la celda recorta lo que se sale de ella. */
+.due-tip {
+  position: fixed;
+  z-index: 50;
+  transform: translate(-50%, calc(-100% - 8px));
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  background: var(--text);
+  color: var(--card);
+  font-size: 12px;
+  line-height: 1.3;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow: var(--shadow-lg);
+}
+
+.due-tip strong {
+  font-size: 13px;
+}
+
+.due-tip span {
+  opacity: 0.8;
+}
+
+.due-legend {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--terracotta-light);
+  border: 1px solid var(--terracotta);
+  color: var(--terracotta-dark);
+  vertical-align: middle;
 }
 
 .cal-legend .muted {
@@ -2121,4 +2151,13 @@ a.export {
 
 .steps li {
   margin-bottom: 5px;
+}
+
+/* Cabecera de un bloque del día en el calendario: título y, a la derecha, su acción. */
+.day-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
 }

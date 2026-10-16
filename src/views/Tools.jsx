@@ -41,8 +41,7 @@ function FppPanel() {
           fecha real se desplaza.
         </p>
         <p className="muted">
-          Es una estimación, no una cita: solo una minoría de bebés nace exactamente ese día. Lo que marca la
-          guardia de tu agenda es la franja alrededor de esa fecha, que se configura en Ajustes.
+          Es una estimación, no una cita: solo una minoría de bebés nace exactamente ese día.
         </p>
       </div>
     </div>

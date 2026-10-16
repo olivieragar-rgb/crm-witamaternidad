@@ -105,10 +105,6 @@ export const api = {
   removeExpense: (id) => req('DELETE', `/api/expenses/${id}`),
   taxes: (year, quarter) => req('GET', `/api/taxes?year=${year}&quarter=${quarter}`),
 
-  // Guardia alrededor de la FPP
-  oncall: () => req('GET', '/api/oncall'),
-  oncallConflicts: (dueDate, excludeId) =>
-    req('GET', `/api/oncall/conflicts?dueDate=${encodeURIComponent(dueDate)}${excludeId ? `&excludeId=${excludeId}` : ''}`),
 
   calendarToken: (revoke) => req('POST', '/api/settings/calendar/token', { revoke: !!revoke }),
 

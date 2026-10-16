@@ -24,7 +24,6 @@ export default function Clients({ initialFilter }) {
   const [form, setForm] = useState(EMPTY);
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState('');
-  const [clash, setClash] = useState(null);
   // { client, kind, fromCreate }: el cuestionario abierto, y si venimos de
   // crear la ficha (entonces cerrar no cancela nada, es "mas tarde").
   const [formFor, setFormFor] = useState(null);
@@ -40,20 +39,6 @@ export default function Clients({ initialFilter }) {
   useEffect(() => {
     load();
   }, []);
-
-  // Avisar del choque mientras se escribe la FPP, que es cuando sirve de algo:
-  // despues de aceptar a la clienta ya no hay decision que tomar.
-  useEffect(() => {
-    if (!open || !form.dueDate) return setClash(null);
-    let alive = true;
-    api
-      .oncallConflicts(form.dueDate, editingId)
-      .then((r) => alive && setClash(r.conflicts.length ? r : null))
-      .catch(() => alive && setClash(null));
-    return () => {
-      alive = false;
-    };
-  }, [open, form.dueDate, editingId]);
 
   const visible = searchItems(rows, query, text);
   const set = (f) => (e) => setForm({ ...form, [f]: e.target.value });
@@ -269,20 +254,6 @@ export default function Clients({ initialFilter }) {
               </select>
             </Field>
           </div>
-          {clash && (
-            <p className="notice">
-              <strong>Guardia solapada.</strong> Con esa FPP estarías de guardia del{' '}
-              {fmtDate(clash.window.start)} al {fmtDate(clash.window.end)}, y eso choca con{' '}
-              {clash.conflicts.map((c, i) => (
-                <span key={c.id}>
-                  {i > 0 && ', '}
-                  <strong>{c.name}</strong> (FPP {fmtDate(c.dueDate)})
-                </span>
-              ))}
-              . Puedes guardarla igual, pero las dos pueden ponerse de parto a la vez.
-            </p>
-          )}
-
           <details className="fiscal consent" open={!form.consentAt}>
             <summary>Consentimiento (RGPD)</summary>
             <p className="muted small">
