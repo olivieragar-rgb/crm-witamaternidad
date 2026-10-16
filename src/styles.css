@@ -645,6 +645,86 @@ button.icon:hover {
   background: var(--bg-warm);
 }
 
+/* La celda de acciones tiene que seguir siendo celda de tabla: con
+   `display: flex` medía menos que las demás y el fondo del hover de la fila
+   salía cortado, sin forma de rectángulo. */
+td.row-actions {
+  display: table-cell;
+  text-align: right;
+  white-space: nowrap;
+}
+
+td.row-actions > * {
+  vertical-align: middle;
+}
+
+td.row-actions > * + * {
+  margin-left: 6px;
+}
+
+/* Cabecera que ordena. */
+.th-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.th-sort:hover,
+.th-sort.is-active {
+  color: var(--text);
+}
+
+.th-sort .sort-ind {
+  font-size: 10px;
+  opacity: 0.35;
+}
+
+.th-sort.is-active .sort-ind {
+  opacity: 1;
+}
+
+/* Datos de la clienta, borrosos hasta que se pulsa su fila. Sutil: se ve que
+   hay algo y se sabe de quién es (el nombre queda nítido), pero no se lee
+   desde lejos ni de pasada. Con el foco dentro de la fila se aclara, que es
+   lo que pasa al pulsarla, y se vuelve a nublar al pulsar fuera. */
+.private-row {
+  cursor: pointer;
+}
+
+.private-row:focus {
+  outline: none;
+}
+
+.private-row:focus-visible td {
+  background: var(--bg-warm);
+}
+
+.sensitive {
+  filter: blur(3.5px);
+  opacity: 0.85;
+  transition: filter var(--dur) var(--ease-out), opacity var(--dur) var(--ease-out);
+  user-select: none;
+}
+
+span.sensitive {
+  display: inline-block;
+  max-width: 100%;
+}
+
+.private-row:focus-within .sensitive {
+  filter: none;
+  opacity: 1;
+  user-select: text;
+}
+
 .grid-table strong {
   font-weight: 700;
 }
@@ -1992,6 +2072,12 @@ a.btn:hover {
   .row-actions {
     flex-wrap: wrap;
     gap: 8px;
+  }
+  td.row-actions {
+    white-space: normal;
+  }
+  td.row-actions > * + * {
+    margin-left: 8px;
   }
 }
 

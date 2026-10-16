@@ -24,6 +24,30 @@ export function Toolbar({ title, query, setQuery, onNew, newLabel = 'Nueva' }) {
   );
 }
 
+/**
+ * Cabecera de columna que ordena la tabla al pulsarla: ▲ ascendente, ▼
+ * descendente y, a la tercera, vuelve al orden de origen.
+ */
+export function SortTh({ label, k, sort, onSort }) {
+  const activa = sort.key === k;
+  const aria = activa ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none';
+  return (
+    <th aria-sort={aria}>
+      <button
+        type="button"
+        className={'th-sort' + (activa ? ' is-active' : '')}
+        onClick={() => onSort(k)}
+        title={`Ordenar por ${label.toLowerCase()}`}
+      >
+        {label}
+        <span className="sort-ind" aria-hidden="true">
+          {activa ? (sort.dir === 'asc' ? '▲' : '▼') : '↕'}
+        </span>
+      </button>
+    </th>
+  );
+}
+
 export function Badge({ value }) {
   const key = (value || '').split(' ')[0].toLowerCase();
   return <span className={'badge badge-' + key}>{value}</span>;

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { api, fmtDate, gestWeeks } from '../api.js';
 import { searchItems } from '../search.js';
-import { Toolbar, Badge, Modal, Field, EmptyRow } from '../components/ui.jsx';
+import { Toolbar, Badge, Modal, Field, EmptyRow, SortTh } from '../components/ui.jsx';
+import { sortRows, nextSort } from '../lib/sort.js';
 import QuestionnaireModal from '../components/QuestionnaireModal.jsx';
 import { kindForService } from '../data/questionnaires.js';
 import { useConfig, options } from '../config.jsx';
@@ -20,6 +21,7 @@ export default function Clients({ initialFilter }) {
   const config = useConfig();
   const [rows, setRows] = useState([]);
   const [query, setQuery] = useState(initialFilter?.q || '');
+  const [sort, setSort] = useState({ key: null, dir: 'asc' });
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(EMPTY);
   const [editingId, setEditingId] = useState(null);
@@ -40,7 +42,32 @@ export default function Clients({ initialFilter }) {
     load();
   }, []);
 
-  const visible = searchItems(rows, query, text);
+  // Estado del cuestionario de una clienta: lo que se pinta y lo que se ordena.
+  function questionnaire(c) {
+    if (c.anonymizedAt) return null;
+    const saved = formStatus[c.id] || [];
+    // El del servicio; si el servicio no pide ninguno pero hay uno guardado
+    // (le cambiaron el servicio despues), ese.
+    const kind = kindForService(c.service) || saved[0]?.kind;
+    if (!kind) return null;
+    return { kind, row: saved.find((f) => f.kind === kind) };
+  }
+  const SORT_BY = {
+    name: (c) => c.name,
+    service: (c) => c.service,
+    mode: (c) => c.mode,
+    dueDate: (c) => c.dueDate,
+    status: (c) => c.status,
+    form: (c) => {
+      const q = questionnaire(c);
+      if (!q) return '';
+      return q.row ? (q.row.status === 'completo' ? 'Completo' : 'Pendiente') : 'Sin rellenar';
+    },
+  };
+  const onSort = (key) => setSort((s0) => nextSort(s0, key));
+  const visible = sortRows(searchItems(rows, query, text), sort, SORT_BY);
+  // Escape suelta la fila: los datos vuelven a quedar borrosos.
+  const soltar = (e) => e.key === 'Escape' && e.currentTarget.blur();
   const set = (f) => (e) => setForm({ ...form, [f]: e.target.value });
 
   // Los desplegables salen de los catalogos, no de constantes del codigo.
@@ -123,62 +150,69 @@ export default function Clients({ initialFilter }) {
       <table className="grid-table">
         <thead>
           <tr>
-            <th>Nombre</th>
-            <th>Servicio</th>
-            <th>Modalidad</th>
-            <th>FPP</th>
-            <th>Estado</th>
-            <th>Cuestionario</th>
+            <SortTh label="Nombre" k="name" sort={sort} onSort={onSort} />
+            <SortTh label="Servicio" k="service" sort={sort} onSort={onSort} />
+            <SortTh label="Modalidad" k="mode" sort={sort} onSort={onSort} />
+            <SortTh label="FPP" k="dueDate" sort={sort} onSort={onSort} />
+            <SortTh label="Estado" k="status" sort={sort} onSort={onSort} />
+            <SortTh label="Cuestionario" k="form" sort={sort} onSort={onSort} />
             <th></th>
           </tr>
         </thead>
         <tbody>
           {visible.map((c) => (
-            <tr key={c.id} className={c.anonymizedAt ? 'inactive-row' : ''}>
+            <tr
+              key={c.id}
+              className={'private-row' + (c.anonymizedAt ? ' inactive-row' : '')}
+              tabIndex={0}
+              onKeyDown={soltar}
+              title="Pulsa para ver sus datos"
+            >
               <td>
                 <strong>{c.name}</strong>
-                <div className="muted">
+                <div className="muted sensitive">
                   {c.anonymizedAt ? `Anonimizada el ${fmtDate(c.anonymizedAt)}` : c.email || c.phone}
                 </div>
               </td>
-              <td>{c.service}</td>
-              <td className="muted">{c.mode}</td>
+              <td>
+                <span className="sensitive">{c.service}</span>
+              </td>
               <td className="muted">
-                {c.dueDate ? (
-                  <>
-                    {fmtDate(c.dueDate)}
-                    {(() => {
-                      const g = gestWeeks(c.dueDate);
-                      if (!g) return null;
-                      return <div className={'gest' + (g.past ? ' gest-past' : '')}>{g.past ? 'FPP pasada' : `${g.label} sem`}</div>;
-                    })()}
-                  </>
-                ) : (
-                  '—'
-                )}
+                <span className="sensitive">{c.mode}</span>
+              </td>
+              <td className="muted">
+                <div className="sensitive">
+                  {c.dueDate ? (
+                    <>
+                      {fmtDate(c.dueDate)}
+                      {(() => {
+                        const g = gestWeeks(c.dueDate);
+                        if (!g) return null;
+                        return <div className={'gest' + (g.past ? ' gest-past' : '')}>{g.past ? 'FPP pasada' : `${g.label} sem`}</div>;
+                      })()}
+                    </>
+                  ) : (
+                    '—'
+                  )}
+                </div>
               </td>
               <td>
-                <Badge value={c.status} />
+                <span className="sensitive">
+                  <Badge value={c.status} />
+                </span>
               </td>
               <td>
-                {(() => {
-                  if (c.anonymizedAt) return <span className="muted">—</span>;
-                  const saved = formStatus[c.id] || [];
-                  // El del servicio; si el servicio no pide ninguno pero hay
-                  // uno guardado (le cambiaron el servicio despues), ese.
-                  const kind = kindForService(c.service) || saved[0]?.kind;
-                  if (!kind) return <span className="muted">—</span>;
-                  const row = saved.find((f) => f.kind === kind);
-                  return (
-                    <button onClick={() => setFormFor({ client: c, kind })}>
-                      {row ? (
-                        <Badge value={row.status === 'completo' ? 'Completo' : 'Pendiente'} />
-                      ) : (
-                        'Rellenar'
-                      )}
-                    </button>
-                  );
-                })()}
+                <span className="sensitive">
+                  {(() => {
+                    const q = questionnaire(c);
+                    if (!q) return <span className="muted">—</span>;
+                    return (
+                      <button onClick={() => setFormFor({ client: c, kind: q.kind })}>
+                        {q.row ? <Badge value={q.row.status === 'completo' ? 'Completo' : 'Pendiente'} /> : 'Rellenar'}
+                      </button>
+                    );
+                  })()}
+                </span>
               </td>
               <td className="row-actions">
                 <a className="btn" href={api.exportClientUrl(c.id)} target="_blank" rel="noreferrer"
