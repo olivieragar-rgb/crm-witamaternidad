@@ -71,7 +71,7 @@ questionnairesRouter.put('/:id/form', async (req, res, next) => {
     // Una ficha anonimizada perdio sus datos personales porque la clienta lo
     // pidio. Volver a meterle datos de salud deshace ese derecho.
     if (client.anonymizedAt) {
-      return res.status(409).json({ error: 'Esta ficha está anonimizada: no se le pueden añadir datos' });
+      return res.status(409).json({ error: 'Esta ficha está anonimizada, así que ya no se le pueden añadir datos' });
     }
 
     // El estado lo decide el servidor, no el cliente: es la definicion del

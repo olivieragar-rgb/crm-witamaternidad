@@ -23,7 +23,7 @@ export const MIN_PASSWORD_LENGTH = 10;
 /** @param {string} password @returns {Promise<string>} 'scrypt$N$r$p$salt$hash' */
 export async function hashPassword(password) {
   if (typeof password !== 'string' || password.length < MIN_PASSWORD_LENGTH) {
-    const err = new Error(`La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.`);
+    const err = new Error(`Tu contraseña necesita al menos ${MIN_PASSWORD_LENGTH} caracteres.`);
     err.code = 'WEAK_PASSWORD';
     throw err;
   }

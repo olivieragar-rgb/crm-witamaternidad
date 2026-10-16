@@ -192,8 +192,8 @@ export default function Invoices({ initialFilter }) {
   async function issue(row) {
     if (
       !confirm(
-        'Al emitir, la factura toma número definitivo y deja de poder editarse.\n' +
-          'Los errores se corrigen después con una rectificativa.\n\n¿Emitir?',
+        'Al emitirla, la factura recibe su número definitivo y ya no se puede editar.\n' +
+          'Si te equivocas, se corrige con una rectificativa.\n\n¿La emitimos?',
       )
     ) {
       return;
@@ -220,14 +220,14 @@ export default function Invoices({ initialFilter }) {
   async function rectify(row) {
     const reason = prompt('Motivo de la rectificación:');
     if (reason === null) return;
-    if (!reason.trim()) return alert('El motivo es obligatorio.');
+    if (!reason.trim()) return alert('Escribe el motivo para poder seguir.');
     try {
       const rect = await api.rectifyInvoice(row.id, { reason });
       setDetail(null);
       load();
       alert(
-        `Creada la rectificativa como borrador. Ajusta los importes y emítela:\n` +
-          `al emitirla, la factura ${row.number} quedará marcada como rectificada.`,
+        `Rectificativa creada como borrador. Ajusta los importes y emítela:\n` +
+          `en cuanto lo hagas, la factura ${row.number} pasará a rectificada.`,
       );
       edit(rect);
     } catch (e) {
@@ -238,7 +238,7 @@ export default function Invoices({ initialFilter }) {
   async function voidInvoice(row) {
     const reason = prompt('Motivo de la anulación:');
     if (reason === null) return;
-    if (!reason.trim()) return alert('El motivo es obligatorio.');
+    if (!reason.trim()) return alert('Escribe el motivo para poder seguir.');
     try {
       await api.voidInvoice(row.id, { reason });
       setDetail(null);
@@ -253,7 +253,7 @@ export default function Invoices({ initialFilter }) {
     if (!inv.clientEmail) {
       return alert('La clienta no tiene email en su ficha. Añádelo en Clientas y vuelve a intentarlo.');
     }
-    if (!confirm(`¿Enviar la factura ${inv.number} a ${inv.clientEmail}?\nSe adjunta el PDF y el Excel.`)) return;
+    if (!confirm(`¿Enviamos la factura ${inv.number} a ${inv.clientEmail}?\nLe llegarán el PDF y el Excel adjuntos.`)) return;
     try {
       const res = await api.emailInvoice(row.id);
       alert(`Factura enviada a ${res.to}`);
@@ -649,8 +649,8 @@ export default function Invoices({ initialFilter }) {
           </div>
 
           <p className="muted small">
-            La fecha de la operación solo hace falta si el servicio se prestó en una fecha distinta a la de
-            la factura. Si coincide, déjala vacía y no saldrá en el PDF.
+            La fecha de la operación solo la necesitas si prestaste el servicio en un día distinto al de la
+            factura. Si coincide, déjala vacía y no saldrá en el PDF.
           </p>
 
           <label className="check">

@@ -216,10 +216,10 @@ test('la copia fiscal no cambia aunque cambie la ficha de la clienta', async () 
 
 test('no se emite sin lineas, sin clienta o sin NIF de la clienta', async () => {
   const vacia = await draft({ items: [] });
-  assert.match((await a.post(`/api/invoices/${vacia.id}/issue`)).data.error, /ninguna línea/);
+  assert.match((await a.post(`/api/invoices/${vacia.id}/issue`)).data.error, /al menos una línea/);
 
   const sinClienta = await draft({ clientId: null });
-  assert.match((await a.post(`/api/invoices/${sinClienta.id}/issue`)).data.error, /necesita una clienta/);
+  assert.match((await a.post(`/api/invoices/${sinClienta.id}/issue`)).data.error, /Elige primero la clienta/);
 
   const otra = (await a.post('/api/clients', { name: 'Sin NIF' })).data;
   const sinNif = await draft({ clientId: otra.id });

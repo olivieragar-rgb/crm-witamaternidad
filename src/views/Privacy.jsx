@@ -80,10 +80,10 @@ function Retention() {
   async function anonymize(row) {
     if (
       !confirm(
-        `Anonimizar la ficha de ${row.name}.\n\n` +
-          'Se borran nombre, contacto, FPP y notas, y también las notas de sus citas.\n' +
-          'Sus facturas se conservan intactas: la ley obliga a guardarlas.\n\n' +
-          'Esto no se puede deshacer. ¿Seguir?',
+        `Vas a anonimizar la ficha de ${row.name}.\n\n` +
+          'Se borran su nombre, contacto, FPP y notas, y también las notas de sus citas.\n' +
+          'Sus facturas se quedan tal cual: la ley obliga a guardarlas.\n\n' +
+          'No hay vuelta atrás. ¿Seguimos?',
       )
     ) {
       return;

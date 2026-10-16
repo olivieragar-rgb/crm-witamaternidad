@@ -310,8 +310,8 @@ function TaxSummary({ t }) {
       </div>
 
       <p className="muted small tax-note">
-        Cifras calculadas a partir de tus facturas emitidas y tus gastos, por fecha de factura (criterio de
-        devengo), sin contar anuladas, rectificadas ni borradores. <strong>Esto no presenta nada ante
+        Las cifras salen de tus facturas emitidas y tus gastos, contados por fecha de factura (criterio de
+        devengo), sin anuladas, rectificadas ni borradores. <strong>Esto no presenta nada ante
         Hacienda</strong>: son los números para rellenar el modelo o pasárselos a tu gestoría.
       </p>
     </div>

@@ -15,7 +15,7 @@ export default function PasswordModal({ onClose }) {
   async function save() {
     setError('');
     if (next !== repeat) return setError('Las dos contraseñas nuevas no coinciden.');
-    if (next.length < MIN) return setError(`La contraseña debe tener al menos ${MIN} caracteres.`);
+    if (next.length < MIN) return setError(`Tu contraseña necesita al menos ${MIN} caracteres.`);
     try {
       await api.changePassword({ current, next });
       setDone(true);

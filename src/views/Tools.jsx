@@ -208,10 +208,10 @@ function GrowthPanel() {
       )}
 
       <p className="muted small tool-note">
-        Fuente: patrones de crecimiento infantil de la Organización Mundial de la Salud, peso para la edad,
-        del nacimiento a los 24 meses. Es una <strong>ayuda visual para la consulta, no un diagnóstico</strong>:
-        un percentil bajo o alto por sí solo no dice nada, y quien valora el crecimiento de un bebé es su
-        pediatra. Los datos de esta pantalla no se guardan en el CRM.
+        Fuente: patrones de crecimiento infantil de la OMS, peso para la edad, del nacimiento a los 24
+        meses. Es una <strong>ayuda visual para la consulta, no un diagnóstico</strong>: un percentil bajo o
+        alto por sí solo no dice nada, y quien valora cómo crece un bebé es su pediatra. Lo que escribes aquí
+        no se guarda en el CRM.
       </p>
     </div>
   );

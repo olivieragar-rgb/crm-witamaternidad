@@ -116,13 +116,13 @@ export async function attachUser(req, res, next) {
 }
 
 export function requireAuth(req, res, next) {
-  if (!req.user) return res.status(401).json({ error: 'Sesión no válida' });
+  if (!req.user) return res.status(401).json({ error: 'Tu sesión ha caducado. Vuelve a entrar.' });
   next();
 }
 
 export function requireAdmin(req, res, next) {
-  if (!req.user) return res.status(401).json({ error: 'Sesión no válida' });
-  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Solo para administradoras' });
+  if (!req.user) return res.status(401).json({ error: 'Tu sesión ha caducado. Vuelve a entrar.' });
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Esto es solo para administradoras' });
   next();
 }
 
@@ -146,7 +146,7 @@ authRouter.post('/auth/setup', async (req, res, next) => {
     const email = String(req.body?.email || '').trim().toLowerCase();
     const name = String(req.body?.name || '').trim();
     const password = String(req.body?.password || '');
-    if (!email || !name) return res.status(400).json({ error: 'Nombre y email son obligatorios' });
+    if (!email || !name) return res.status(400).json({ error: 'Faltan el nombre o el email' });
     const passwordHash = await hashPassword(password);
     const info = await run(
       "INSERT INTO users (email, name, role, passwordHash, active, lastLoginAt) VALUES (?, ?, 'admin', ?, 1, ?)",
@@ -258,7 +258,7 @@ usersRouter.post('/', async (req, res, next) => {
     const email = String(req.body?.email || '').trim().toLowerCase();
     const name = String(req.body?.name || '').trim();
     const role = ROLES.has(req.body?.role) ? req.body.role : 'pro';
-    if (!email || !name) return res.status(400).json({ error: 'Nombre y email son obligatorios' });
+    if (!email || !name) return res.status(400).json({ error: 'Faltan el nombre o el email' });
     if (await get('SELECT id FROM users WHERE email = ?', [email])) {
       return res.status(409).json({ error: 'Ya hay una cuenta con ese email' });
     }
@@ -292,7 +292,7 @@ usersRouter.put('/:id', async (req, res, next) => {
     // sin forma de volver a entrar a los ajustes ni a los usuarios.
     const losingAdmin = user.role === 'admin' && user.active && (role !== 'admin' || !active);
     if (losingAdmin && (await countActiveAdmins()) <= 1) {
-      return res.status(409).json({ error: 'Debe quedar al menos una administradora activa' });
+      return res.status(409).json({ error: 'Tiene que quedar al menos una administradora activa' });
     }
 
     await run('UPDATE users SET name = ?, role = ?, active = ? WHERE id = ?', [name, role, active, id]);
@@ -316,7 +316,7 @@ usersRouter.delete('/:id', async (req, res, next) => {
     const user = await get('SELECT * FROM users WHERE id = ?', [id]);
     if (!user) return res.status(404).json({ error: 'No encontrado' });
     if (user.role === 'admin' && user.active && (await countActiveAdmins()) <= 1) {
-      return res.status(409).json({ error: 'Debe quedar al menos una administradora activa' });
+      return res.status(409).json({ error: 'Tiene que quedar al menos una administradora activa' });
     }
     await run('DELETE FROM sessions WHERE userId = ?', [id]);
     await run('DELETE FROM users WHERE id = ?', [id]);

@@ -120,7 +120,7 @@ function crud({ table, fields, required = [], searchText, orderBy = 'id DESC', b
       const body = req.body ?? {};
       for (const f of required) {
         if (body[f] === undefined || String(body[f]).trim() === '') {
-          return res.status(400).json({ error: `El campo "${f}" es obligatorio` });
+          return res.status(400).json({ error: `Falta rellenar "${f}"` });
         }
       }
       // Solo se insertan las columnas que vienen en la peticion. Las demas se
@@ -149,7 +149,7 @@ function crud({ table, fields, required = [], searchText, orderBy = 'id DESC', b
       const body = req.body ?? {};
       for (const f of required) {
         if (body[f] !== undefined && String(body[f]).trim() === '') {
-          return res.status(400).json({ error: `El campo "${f}" es obligatorio` });
+          return res.status(400).json({ error: `Falta rellenar "${f}"` });
         }
       }
       const vals = fields.map((f) => (body[f] === undefined ? existing[f] : normalize(f, body[f])));
@@ -310,7 +310,7 @@ app.get('/api/invoices/pdf', async (req, res, next) => {
       const inv = await invoiceWithItems(id);
       if (inv) docs.push({ ...inv, ...pdfExtras(inv, invoicing) });
     }
-    if (docs.length === 0) return res.status(404).json({ error: 'No se encontro ninguna.' });
+    if (docs.length === 0) return res.status(404).json({ error: 'No hay ninguna factura con esos datos.' });
 
     // Por fecha y numero, que es como se archivan.
     docs.sort((a, b) => String(a.date).localeCompare(String(b.date)) || String(a.number).localeCompare(String(b.number)));

@@ -56,7 +56,7 @@ export default function ReminderModal({ kind, id, onClose, onSent }) {
       submitLabel={busy ? 'Enviando…' : 'Enviar'}
     >
       <p className="muted">
-        Esto es lo que va a recibir. El texto se cambia en <strong>Ajustes · Recordatorios</strong>.
+        Esto es lo que le va a llegar. Puedes cambiar el texto en <strong>Ajustes · Recordatorios</strong>.
       </p>
       <Field label="Para">
         <input value={preview.to} readOnly />

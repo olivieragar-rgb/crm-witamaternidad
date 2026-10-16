@@ -125,9 +125,9 @@ export default function QuestionnaireModal({ client, kind: initialKind, onClose,
     >
       {!client.consentAt && (
         <p className="notice">
-          <strong>Sin consentimiento registrado.</strong> Aquí vas a escribir datos de salud de ella y
-          del bebé. Antes de guardarlos tiene que haberlo autorizado, y hay que poder demostrar cuándo
-          y cómo: está en el bloque «Consentimiento (RGPD)» de su ficha.
+          <strong>Sin consentimiento registrado.</strong> Vas a anotar datos de salud suyos y del bebé.
+          Antes necesitas su permiso, y poder demostrar cuándo y cómo te lo dio: lo registras en el
+          bloque «Consentimiento (RGPD)» de su ficha.
         </p>
       )}
 

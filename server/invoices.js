@@ -306,7 +306,7 @@ invoicesRouter.put('/:id', async (req, res, next) => {
     if (!existing) return res.status(404).json({ error: 'No encontrado' });
     if (ISSUED.has(existing.status)) {
       return res.status(409).json({
-        error: 'Una factura emitida no se puede modificar. Emite una rectificativa.',
+        error: 'Una factura emitida ya no se puede modificar. Si hay un error, haz una rectificativa.',
       });
     }
     const b = req.body ?? {};
@@ -343,7 +343,7 @@ invoicesRouter.delete('/:id', async (req, res, next) => {
     if (!existing) return res.status(404).json({ error: 'No encontrado' });
     if (ISSUED.has(existing.status)) {
       return res.status(409).json({
-        error: 'Una factura emitida no se puede borrar. Puedes anularla o rectificarla.',
+        error: 'Una factura emitida no se puede borrar, pero puedes anularla o rectificarla.',
       });
     }
     await run('DELETE FROM invoice_items WHERE invoiceId = ?', [id]);
@@ -371,12 +371,12 @@ invoicesRouter.post('/:id/issue', async (req, res, next) => {
       });
     }
     const client = await clientFiscalData(inv.clientId);
-    if (!client) return res.status(400).json({ error: 'La factura necesita una clienta.' });
+    if (!client) return res.status(400).json({ error: 'Elige primero la clienta de la factura.' });
     if (!client.taxId) {
       return res.status(400).json({ error: `Falta el NIF de ${client.name}. Añádelo en su ficha.` });
     }
     const items = await all('SELECT * FROM invoice_items WHERE invoiceId = ?', [id]);
-    if (items.length === 0) return res.status(400).json({ error: 'La factura no tiene ninguna línea.' });
+    if (items.length === 0) return res.status(400).json({ error: 'Añade al menos una línea a la factura.' });
 
     const issuedAt = new Date().toISOString().replace('T', ' ').slice(0, 19);
     const date = inv.date || today();
@@ -422,7 +422,7 @@ invoicesRouter.post('/:id/issue', async (req, res, next) => {
       await audit(req, { action: 'issue', entity: 'invoices', entityId: id, detail: number });
       return res.json(await invoiceWithItems(id));
     }
-    res.status(409).json({ error: 'No se pudo asignar número. Vuelve a intentarlo.' });
+    res.status(409).json({ error: 'No se pudo asignar el número. Inténtalo otra vez.' });
   } catch (e) {
     next(e);
   }
@@ -437,7 +437,7 @@ invoicesRouter.post('/:id/status', async (req, res, next) => {
     if (!inv) return res.status(404).json({ error: 'No encontrado' });
     const status = String(req.body?.status || '');
     if (!PAYMENT_STATES.has(status) || !PAYMENT_STATES.has(inv.status)) {
-      return res.status(409).json({ error: 'Ese cambio de estado no es posible' });
+      return res.status(409).json({ error: 'La factura no puede pasar a ese estado' });
     }
     const paidAt = status === 'Pagada' ? String(req.body?.paidAt || today()) : '';
     await run('UPDATE invoices SET status = ?, paidAt = ? WHERE id = ?', [status, paidAt, id]);
@@ -456,7 +456,7 @@ invoicesRouter.post('/:id/rectify', async (req, res, next) => {
     const original = await get('SELECT * FROM invoices WHERE id = ?', [id]);
     if (!original) return res.status(404).json({ error: 'No encontrado' });
     if (!ISSUED.has(original.status)) {
-      return res.status(409).json({ error: 'Solo se rectifica una factura ya emitida' });
+      return res.status(409).json({ error: 'Solo puedes rectificar facturas ya emitidas' });
     }
     if (original.status === 'Rectificada') {
       return res.status(409).json({ error: 'Esta factura ya está rectificada' });

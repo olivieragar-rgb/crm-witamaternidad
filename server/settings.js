@@ -30,9 +30,9 @@ export const DEFAULTS = {
     sidebarFooter: 'WawaywawO',
   },
   emailTemplate: {
-    subject: 'Factura {{numero}} · {{negocio}}',
-    greeting: 'Hola {{clienta}}, adjuntamos tu factura {{numero}} ({{fecha}}).',
-    signature: '',
+    subject: 'Tu factura {{numero}} · {{negocio}}',
+    greeting: 'Hola {{clienta}}, aquí tienes tu factura {{numero}} del {{fecha}}.',
+    signature: 'Un abrazo.',
   },
   // Semanas de disponibilidad permanente alrededor de la FPP. Por defecto,
   // desde la semana 37 (termino) hasta dos despues de la fecha prevista.
@@ -42,11 +42,11 @@ export const DEFAULTS = {
     // venceria nunca y no aparecria en ningun aviso.
     graceDays: 15,
     appointmentDaysAhead: 2,
-    invoiceSubject: 'Recordatorio de la factura {{numero}}',
+    invoiceSubject: 'Un recordatorio sobre tu factura {{numero}}',
     invoiceBody:
       'Hola {{clienta}},\n' +
-      'Te recordamos que la factura {{numero}}, de {{total}}, vencio el {{vencimiento}}.\n' +
-      'Si ya la has pagado, no hagas caso de este mensaje y disculpa las molestias.\n' +
+      'Un recordatorio rápido: la factura {{numero}}, de {{total}}, venció el {{vencimiento}}.\n' +
+      'Si ya la has pagado, ignora este mensaje. ¡Gracias!\n' +
       'Un abrazo.',
     appointmentSubject: 'Tu cita del {{fecha}}',
     appointmentBody:
@@ -61,6 +61,8 @@ export const DEFAULTS = {
   calendar: {
     feedToken: '',
     includeClientNames: 1,
+    // Nombre heredado: ahora publica la fecha probable de parto de cada clienta.
+    // Se conserva para no cambiar lo que ya hubiera elegido quien lo tenga guardado.
     includeOnCall: 1,
   },
   privacy: {

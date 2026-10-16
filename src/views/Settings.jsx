@@ -129,9 +129,9 @@ export default function Settings({ me }) {
       {tab === 'issuer' && (
         <div className="panel">
           <p className="muted">
-            Estos datos salen en todas tus facturas. Los marcados con * los exige el artículo 6.1 del
-            Reglamento de facturación (RD 1619/2012): sin ellos la factura no es válida, y por eso el
-            sistema no deja emitir hasta tenerlos.
+            Estos datos salen en todas tus facturas. Los marcados con * son obligatorios según el artículo
+            6.1 del Reglamento de facturación (RD 1619/2012): sin ellos la factura no es válida, así que no
+            podrás emitir hasta completarlos.
           </p>
           <div className="form-grid">
             {ISSUER_FIELDS.filter((f) => !f.wide).map((f) => (
@@ -189,8 +189,8 @@ export default function Settings({ me }) {
             <textarea rows={3} value={draft.invoicing.exemptionNote} onChange={set('invoicing', 'exemptionNote')} />
           </Field>
           <p className="muted small">
-            Sale en la factura cuando el IVA es cero. Si facturas servicios sanitarios exentos, este texto es
-            obligatorio.
+            Sale en la factura cuando el IVA es cero. Si facturas servicios sanitarios exentos, tienes que
+            ponerlo.
           </p>
 
           <Field label="Datos de pago (salen en la factura)">
@@ -254,8 +254,8 @@ export default function Settings({ me }) {
             </Field>
           </div>
           <p className="muted small">
-            Una factura sin fecha de vencimiento se considera vencida pasados esos días desde su fecha. Sin
-            esto no vencería nunca y no aparecería en ningún aviso.
+            Si una factura no tiene vencimiento, cuenta como vencida pasados esos días desde su fecha. Sin
+            esto no vencería nunca y no saldría en ningún aviso.
           </p>
 
           <HelpTitle
@@ -323,7 +323,7 @@ export default function Settings({ me }) {
             />
           </Field>
           <p className="muted small">
-            El detalle de las líneas y el total se añaden solos; aquí solo se escribe el texto que los rodea.
+            Las líneas y el total se añaden solos; aquí solo escribes el texto de alrededor.
           </p>
           <SaveRow onSave={() => save('emailTemplate')} saved={saved === 'emailTemplate'} />
         </div>
@@ -349,8 +349,8 @@ export default function Settings({ me }) {
             <textarea rows={6} value={draft.privacy.consentText} onChange={set('privacy', 'consentText')} />
           </Field>
           <p className="muted small">
-            Si cambias el texto, sube también la versión: las fichas guardan la versión que aceptaron, y sin
-            subirla no se podría distinguir quién aceptó qué.
+            Si cambias el texto, sube también la versión: cada ficha guarda la versión que aceptó, y si no la
+            subes no habrá forma de saber quién aceptó qué.
           </p>
           <SaveRow onSave={() => save('privacy')} saved={saved === 'privacy'} />
         </div>
@@ -457,7 +457,7 @@ function CalendarFeed() {
   const url = cfg.feedToken ? `${window.location.origin}/api/calendar/${cfg.feedToken}.ics` : '';
 
   async function token(revoke) {
-    if (revoke && !confirm('Al revocar el enlace, el calendario dejará de actualizarse en Google. ¿Seguir?')) {
+    if (revoke && !confirm('Al revocar el enlace, el calendario dejará de actualizarse en Google. ¿Seguimos?')) {
       return;
     }
     setError('');

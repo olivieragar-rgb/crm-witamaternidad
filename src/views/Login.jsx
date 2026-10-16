@@ -25,7 +25,7 @@ export default function Login({ needsSetup, onReady }) {
       return;
     }
     if (needsSetup && password.length < MIN) {
-      setError(`La contraseña debe tener al menos ${MIN} caracteres.`);
+      setError(`Tu contraseña necesita al menos ${MIN} caracteres.`);
       return;
     }
     setBusy(true);
@@ -48,8 +48,8 @@ export default function Login({ needsSetup, onReady }) {
         <h1>{needsSetup ? 'Crear tu cuenta' : 'Witamaternidad'}</h1>
         <p className="muted">
           {needsSetup
-            ? 'Es la primera vez que se abre el CRM. Crea la cuenta de administradora.'
-            : 'Entra para acceder al CRM.'}
+            ? 'Es la primera vez que abres el CRM. Crea tu cuenta de administradora.'
+            : 'Entra con tu email y tu contraseña.'}
         </p>
 
         {needsSetup && (

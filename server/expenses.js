@@ -95,7 +95,7 @@ expensesRouter.post('/', async (req, res, next) => {
   try {
     const b = req.body ?? {};
     if (!String(b.description || '').trim()) {
-      return res.status(400).json({ error: 'El concepto es obligatorio' });
+      return res.status(400).json({ error: 'Falta el concepto del gasto' });
     }
     const info = await run(
       `INSERT INTO expenses (${FIELDS.join(', ')}) VALUES (${FIELDS.map(() => '?').join(', ')})`,

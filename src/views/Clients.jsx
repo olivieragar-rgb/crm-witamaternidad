@@ -125,10 +125,10 @@ export default function Clients({ initialFilter }) {
   async function anonymize(c) {
     if (
       !confirm(
-        `Anonimizar la ficha de ${c.name}.\n\n` +
-          'Se borran nombre, contacto, FPP y notas, y también las notas de sus citas.\n' +
-          'Sus facturas se conservan intactas: la ley obliga a guardarlas.\n\n' +
-          'Esto no se puede deshacer. ¿Seguir?',
+        `Vas a anonimizar la ficha de ${c.name}.\n\n` +
+          'Se borran su nombre, contacto, FPP y notas, y también las notas de sus citas.\n' +
+          'Sus facturas se quedan tal cual: la ley obliga a guardarlas.\n\n' +
+          'No hay vuelta atrás. ¿Seguimos?',
       )
     ) {
       return;
@@ -291,8 +291,8 @@ export default function Clients({ initialFilter }) {
           <details className="fiscal consent" open={!form.consentAt}>
             <summary>Consentimiento (RGPD)</summary>
             <p className="muted small">
-              Aquí hay datos de salud. Antes de guardarlos hace falta que la clienta lo haya autorizado, y
-              hay que poder demostrar cuándo y cómo. El texto que se acepta está en Ajustes · Privacidad.
+              Aquí guardas datos de salud, así que antes necesitas su permiso y poder demostrar cuándo y
+              cómo te lo dio. El texto que acepta está en Ajustes · Privacidad.
             </p>
             <div className="form-grid">
               <Field label="Fecha del consentimiento">
