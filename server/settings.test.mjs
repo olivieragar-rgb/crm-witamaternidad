@@ -89,6 +89,33 @@ test('anadir, renombrar, desactivar y borrar una opcion', async () => {
   assert.ok(!borrada.data.mode.some((v) => v.id === creada.id));
 });
 
+test('una opcion no se puede duplicar: ni creandola, ni renombrando otra, ni cambiando mayusculas', async () => {
+  const { values } = (await a.get('/api/catalogs')).data;
+  const online = values.mode.find((v) => v.value === 'Online');
+  assert.ok(online, 'la de fabrica existe');
+
+  // Mismo valor con otras mayusculas o espacios: para quien elige, es la misma.
+  assert.equal((await a.post('/api/catalogs', { type: 'mode', value: 'online' })).status, 409);
+  assert.equal((await a.post('/api/catalogs', { type: 'mode', value: '  ONLINE ' })).status, 409);
+
+  // Renombrar otra opcion a un valor que ya existe tambien la duplicaria.
+  const otra = (await a.post('/api/catalogs', { type: 'mode', value: 'Domicilio' })).data.mode.find(
+    (v) => v.value === 'Domicilio',
+  );
+  assert.equal((await a.put(`/api/catalogs/${otra.id}`, { value: 'Online' })).status, 409);
+  assert.equal((await a.put(`/api/catalogs/${otra.id}`, { value: ' online' })).status, 409);
+
+  // Renombrarse a si misma (cambiando solo las mayusculas) si se puede.
+  assert.equal((await a.put(`/api/catalogs/${otra.id}`, { value: 'DOMICILIO' })).status, 200);
+
+  // El mismo valor en otro tipo no cuenta: son listas distintas.
+  const otroTipo = await a.post('/api/catalogs', { type: 'consentChannel', value: 'Domicilio' });
+  assert.equal(otroTipo.status, 201);
+
+  await a.del(`/api/catalogs/${otra.id}`);
+  await a.del(`/api/catalogs/${otroTipo.data.consentChannel.find((v) => v.value === 'Domicilio').id}`);
+});
+
 test('desactivar una opcion no toca las fichas que ya la usaban', async () => {
   const { values } = (await a.get('/api/catalogs')).data;
   const online = values.mode.find((v) => v.value === 'Online');

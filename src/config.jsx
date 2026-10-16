@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { api } from './api.js';
+import { options } from './options.js';
 
 // Ajustes y catálogos del negocio, cargados una vez al entrar. Las vistas los
 // leen de aquí en lugar de traer constantes escritas en el código.
@@ -24,20 +25,7 @@ export function ConfigProvider({ children }) {
 
 export const useConfig = () => useContext(ConfigContext);
 
-/**
- * Opciones de un desplegable. Incluye siempre el valor que ya tenía el
- * registro, aunque esa opción se haya desactivado: desactivarla la quita de
- * los formularios nuevos, no reescribe lo que ya estaba guardado.
- *
- * @param {Array<{value:string, active:boolean}>} list
- * @param {string} current
- * @returns {string[]}
- */
-export function options(list, current) {
-  const values = (list || []).filter((o) => o.active).map((o) => o.value);
-  if (current && !values.includes(current)) return [current, ...values];
-  return values;
-}
+export { options };
 
 /** Hook de conveniencia: las opciones de un catálogo por su nombre. */
 export function useOptions(type, current) {

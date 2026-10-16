@@ -255,6 +255,7 @@ const INDEXES = `
   CREATE UNIQUE INDEX IF NOT EXISTS idx_invoices_number ON invoices (number) WHERE number <> '';
   CREATE UNIQUE INDEX IF NOT EXISTS idx_invoices_series_seq
     ON invoices (series, fiscalYear, seq) WHERE seq IS NOT NULL;
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_catalogs_unique ON catalogs (type, lower(trim(value)));
 `;
 
 let readyPromise;
@@ -299,6 +300,10 @@ async function migrate() {
     await run(`ALTER TABLE ${table} ADD COLUMN ${column} ${ddl}`);
   }
 
+  // Tiene que ir antes de los indices: el UNIQUE de catalogs no se puede
+  // crear mientras haya opciones repetidas.
+  await dedupeCatalogs();
+
   // Los indices se crean uno a uno. Un indice UNIQUE sobre datos que ya
   // existian puede fallar si esos datos lo violan, y eso no puede dejar la
   // aplicacion entera sin arrancar: se anota y se sigue.
@@ -315,6 +320,27 @@ async function migrate() {
   await backfillInvoiceSeries();
   await backfillInvoiceSnapshots();
   await checkDuplicateNumbers();
+}
+
+/**
+ * Opciones de lista repetidas. Las sembraron dos arranques a la vez (en un
+ * despliegue sin estado cada instancia comprueba "¿hay opciones?" y siembra
+ * si no): cada opcion salia dos veces en el desplegable. Se queda una por
+ * (tipo, valor sin mayusculas ni espacios), prefiriendo la que esta activa.
+ * Borrar es seguro: las fichas guardan el texto de la opcion, no su id.
+ */
+async function dedupeCatalogs() {
+  const rows = await all('SELECT id, type, value, active FROM catalogs ORDER BY id');
+  const grupos = new Map();
+  for (const r of rows) {
+    const clave = `${r.type}\u0000${String(r.value).trim().toLowerCase()}`;
+    (grupos.get(clave) ?? grupos.set(clave, []).get(clave)).push(r);
+  }
+  for (const grupo of grupos.values()) {
+    if (grupo.length < 2) continue;
+    const conservar = grupo.find((r) => r.active) ?? grupo[0];
+    for (const r of grupo) if (r !== conservar) await run('DELETE FROM catalogs WHERE id = ?', [r.id]);
+  }
 }
 
 const nameOfIndex = (sql) => (/INDEX(?: IF NOT EXISTS)? (\w+)/i.exec(sql) || [, '?'])[1];

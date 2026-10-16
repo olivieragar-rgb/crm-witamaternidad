@@ -5,6 +5,18 @@ import express from 'express';
 import { all, get, run } from './db.js';
 import { requireAdmin, audit } from './auth.js';
 
+/** "online", "Online " y "ONLINE" son la misma opcion para quien la elige. */
+const clave = (v) => String(v).trim().toLocaleLowerCase('es');
+
+/** El indice unico de la tabla rechazo el valor: lo hizo otra peticion un instante antes. */
+const esRepetido = (e) => /UNIQUE|constraint/i.test(`${e?.code ?? ''} ${e?.message ?? ''}`);
+
+/** ¿Hay ya otra opcion con ese valor en el mismo tipo? `exceptId` excluye a la que se esta editando. */
+async function yaExiste(type, value, exceptId = null) {
+  const filas = await all('SELECT id, value FROM catalogs WHERE type = ?', [type]);
+  return filas.some((f) => f.id !== exceptId && clave(f.value) === clave(value));
+}
+
 /** @type {Record<string, { label: string, defaults: string[] }>} */
 export const TYPES = {
   clientService: {
@@ -45,7 +57,9 @@ export async function seedCatalogs() {
     const n = (await get('SELECT COUNT(*) AS n FROM catalogs WHERE type = ?', [type])).n;
     if (n > 0) continue;
     for (const [i, value] of defaults.entries()) {
-      await run('INSERT INTO catalogs (type, value, sortOrder, active) VALUES (?, ?, ?, 1)', [type, value, i]);
+      // OR IGNORE: si otro arranque sembro el mismo valor a la vez, el indice
+      // unico de la tabla lo rechaza y aqui simplemente se salta.
+      await run('INSERT OR IGNORE INTO catalogs (type, value, sortOrder, active) VALUES (?, ?, ?, 1)', [type, value, i]);
     }
   }
 }
@@ -84,7 +98,7 @@ catalogsRouter.post('/', async (req, res, next) => {
     const value = String(req.body?.value || '').trim();
     if (!Object.hasOwn(TYPES, type)) return res.status(400).json({ error: 'Catálogo desconocido' });
     if (!value) return res.status(400).json({ error: 'El valor no puede estar vacío' });
-    if (await get('SELECT id FROM catalogs WHERE type = ? AND value = ?', [type, value])) {
+    if (await yaExiste(type, value)) {
       return res.status(409).json({ error: 'Ese valor ya está en la lista' });
     }
     const max = (await get('SELECT MAX(sortOrder) AS m FROM catalogs WHERE type = ?', [type])).m;
@@ -96,6 +110,7 @@ catalogsRouter.post('/', async (req, res, next) => {
     await audit(req, { action: 'catalog_create', entity: 'catalogs', entityId: info.lastInsertRowid, detail: `${type}: ${value}` });
     res.status(201).json(await getCatalogs());
   } catch (e) {
+    if (esRepetido(e)) return res.status(409).json({ error: 'Ese valor ya está en la lista' });
     next(e);
   }
 });
@@ -114,6 +129,10 @@ catalogsRouter.put('/:id', async (req, res, next) => {
     if (!row) return res.status(404).json({ error: 'No encontrado' });
     const value = req.body?.value !== undefined ? String(req.body.value).trim() : row.value;
     if (!value) return res.status(400).json({ error: 'El valor no puede estar vacío' });
+    // Renombrar tambien puede crear un duplicado: "Otro" -> "Lactancia".
+    if (await yaExiste(row.type, value, id)) {
+      return res.status(409).json({ error: 'Ese valor ya está en la lista' });
+    }
     const active = req.body?.active !== undefined ? (req.body.active ? 1 : 0) : row.active;
     const sortOrder = req.body?.sortOrder !== undefined ? Number(req.body.sortOrder) : row.sortOrder;
     await run('UPDATE catalogs SET value = ?, active = ?, sortOrder = ? WHERE id = ?', [
@@ -125,6 +144,7 @@ catalogsRouter.put('/:id', async (req, res, next) => {
     await audit(req, { action: 'catalog_update', entity: 'catalogs', entityId: id });
     res.json(await getCatalogs());
   } catch (e) {
+    if (esRepetido(e)) return res.status(409).json({ error: 'Ese valor ya está en la lista' });
     next(e);
   }
 });
