@@ -176,6 +176,23 @@ test('sin fecha se usa hoy; no se admiten fechas futuras ni canal vacío', async
   assert.equal((await a.post(`/api/clients/${c}/consent`, { action: 'otra' })).status, 400);
 });
 
+test('firmar en pantalla guarda la firma, usa el canal "Firma en pantalla" y sale en el PDF; retirar la borra', async () => {
+  const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+  const c = (await a.post('/api/clients', { name: 'Paula Soto' })).data.id;
+  assert.equal((await a.post(`/api/clients/${c}/consent`, { action: 'grant', signature: 'no-es-un-png' })).status, 400);
+  const ok = await a.post(`/api/clients/${c}/consent`, { action: 'grant', signature: PNG });
+  assert.equal(ok.status, 200);
+  assert.equal(ok.data.consentChannel, 'Firma en pantalla');
+  assert.equal(ok.data.consentVersion, '7');
+  assert.equal('signature' in ok.data, false, 'la firma no viaja en la ficha');
+  const log = (await a.get('/api/audit?action=consent_grant')).data;
+  assert.ok(log.rows.some((r) => r.entityId === String(c) && /con firma/.test(r.detail)));
+  assert.equal((await pdf(`/api/consent-forms/consentimiento?clientId=${c}`)).res.status, 200);
+  assert.equal((await a.post(`/api/clients/${c}/consent`, { action: 'revoke' })).status, 200);
+  const { get } = await import('./db.js');
+  assert.ok(!(await get('SELECT 1 FROM consent_signatures WHERE clientId = ?', [c])), 'la firma se borra al retirar');
+});
+
 test('retirar el consentimiento lo quita de la ficha y deja constancia de cuándo lo dio', async () => {
   const res = await a.post(`/api/clients/${lucia}/consent`, { action: 'revoke', date: '2026-10-10' });
   assert.equal(res.status, 200);

@@ -440,7 +440,9 @@ invoicesRouter.post('/:id/status', async (req, res, next) => {
       return res.status(409).json({ error: 'La factura no puede pasar a ese estado' });
     }
     const paidAt = status === 'Pagada' ? String(req.body?.paidAt || today()) : '';
-    await run('UPDATE invoices SET status = ?, paidAt = ? WHERE id = ?', [status, paidAt, id]);
+    // Al cobrarla se anota cómo se pagó; si no llega, se conserva la que tuviera.
+    const method = status === 'Pagada' && req.body?.paymentMethod ? String(req.body.paymentMethod).trim() : inv.paymentMethod;
+    await run('UPDATE invoices SET status = ?, paidAt = ?, paymentMethod = ? WHERE id = ?', [status, paidAt, method, id]);
     await audit(req, { action: 'status', entity: 'invoices', entityId: id, detail: status });
     res.json(await invoiceWithItems(id));
   } catch (e) {

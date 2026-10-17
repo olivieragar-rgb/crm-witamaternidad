@@ -5,6 +5,8 @@ import { Toolbar, Badge, Modal, Field, EmptyRow, SortTh } from '../components/ui
 import { sortRows, nextSort } from '../lib/sort.js';
 import QuestionnaireModal from '../components/QuestionnaireModal.jsx';
 import ConsentTools from '../components/ConsentTools.jsx';
+import ConsentSignModal from '../components/ConsentSignModal.jsx';
+import ClientRecord from '../components/ClientRecord.jsx';
 import { kindForService } from '../data/questionnaires.js';
 import { useConfig, options } from '../config.jsx';
 
@@ -28,6 +30,13 @@ export default function Clients({ initialFilter }) {
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState('');
   const [consentOpen, setConsentOpen] = useState(false);
+  const [signOpen, setSignOpen] = useState(false);
+  // La ficha abierta (id) y, si se firma desde el listado o la ficha, de quién es la firma.
+  const [recordId, setRecordId] = useState(null);
+  const [recordKey, setRecordKey] = useState(0);
+  const [signClient, setSignClient] = useState(null);
+  // Firma hecha antes de que exista la ficha: se guarda al crearla.
+  const [pendingSignature, setPendingSignature] = useState('');
   // { client, kind, fromCreate }: el cuestionario abierto, y si venimos de
   // crear la ficha (entonces cerrar no cancela nada, es "mas tarde").
   const [formFor, setFormFor] = useState(null);
@@ -60,6 +69,7 @@ export default function Clients({ initialFilter }) {
     mode: (c) => c.mode,
     dueDate: (c) => c.dueDate,
     status: (c) => c.status,
+    consent: (c) => (c.anonymizedAt ? '' : c.consentAt ? 'Firmado' : 'Sin firmar'),
     form: (c) => {
       const q = questionnaire(c);
       if (!q) return '';
@@ -81,6 +91,7 @@ export default function Clients({ initialFilter }) {
     setForm({ ...EMPTY, status: options(config.catalogs.clientStatus)[0] ?? '' });
     setEditingId(null);
     setError('');
+    setPendingSignature('');
     setConsentOpen(false);
     setOpen(true);
   }
@@ -91,6 +102,19 @@ export default function Clients({ initialFilter }) {
     setError('');
     setConsentOpen(false);
     setOpen(true);
+  }
+  // Firmó en el popup. Si la ficha ya existe, se guarda en el acto; si es
+  // nueva, la firma espera a que se cree y viaja justo después.
+  async function onSigned(signature) {
+    if (editingId) {
+      const c = await api.consent(editingId, { action: 'grant', signature });
+      setForm((f) => ({ ...f, consentAt: c.consentAt, consentChannel: c.consentChannel, consentVersion: c.consentVersion }));
+      setConsentOpen(true);
+      load();
+    } else {
+      setPendingSignature(signature);
+    }
+    setSignOpen(false);
   }
   async function save() {
     try {
@@ -103,6 +127,13 @@ export default function Clients({ initialFilter }) {
         ? await api.update('clients', editingId, body)
         : await api.create('clients', body);
       setOpen(false);
+      if (!editingId && pendingSignature) {
+        try {
+          await api.consent(saved.id, { action: 'grant', signature: pendingSignature });
+        } catch (e) {
+          alert(`La ficha se ha creado, pero no se pudo guardar la firma: ${e.message}\nAbre la ficha y vuelve a firmar.`);
+        }
+      }
       load();
       // Al crear, el cuestionario del servicio es el paso siguiente. Al
       // editar no: para eso esta el boton del listado.
@@ -136,6 +167,7 @@ export default function Clients({ initialFilter }) {
             <SortTh label="FPP" k="dueDate" sort={sort} onSort={onSort} />
             <SortTh label="Estado" k="status" sort={sort} onSort={onSort} />
             <SortTh label="Cuestionario" k="form" sort={sort} onSort={onSort} />
+            <SortTh label="RGPD" k="consent" sort={sort} onSort={onSort} />
             <th></th>
           </tr>
         </thead>
@@ -145,8 +177,15 @@ export default function Clients({ initialFilter }) {
               key={c.id}
               className={'private-row' + (c.anonymizedAt ? ' inactive-row' : '')}
               tabIndex={0}
-              onKeyDown={soltar}
-              title="Pulsa para ver sus datos"
+              onKeyDown={(e) => {
+                soltar(e);
+                if (e.key === 'Enter' && e.target === e.currentTarget) setRecordId(c.id);
+              }}
+              onClick={(e) => {
+                // Los botones y enlaces de la fila hacen lo suyo; el resto abre la ficha.
+                if (!e.target.closest('button, a')) setRecordId(c.id);
+              }}
+              title="Pulsa para abrir su ficha"
             >
               <td>
                 <strong>{c.name}</strong>
@@ -186,13 +225,34 @@ export default function Clients({ initialFilter }) {
                   {(() => {
                     const q = questionnaire(c);
                     if (!q) return <span className="muted">—</span>;
+                    const done = q.row?.status === 'completo';
                     return (
-                      <button onClick={() => setFormFor({ client: c, kind: q.kind })}>
-                        {q.row ? <Badge value={q.row.status === 'completo' ? 'Completo' : 'Pendiente'} /> : 'Rellenar'}
+                      <button
+                        type="button"
+                        className={'status-chip ' + (done ? 'is-done' : 'is-todo')}
+                        onClick={() => setFormFor({ client: c, kind: q.kind, startLocked: done })}
+                      >
+                        {done ? '✓ Completo' : q.row ? 'Pendiente' : 'Rellenar'}
                       </button>
                     );
                   })()}
                 </span>
+              </td>
+              <td>
+                {c.anonymizedAt ? (
+                  <span className="muted">—</span>
+                ) : (
+                  <span className="sensitive">
+                    <button
+                      type="button"
+                      className={'status-chip ' + (c.consentAt ? 'is-done' : 'is-todo')}
+                      onClick={() => (c.consentAt ? setRecordId(c.id) : setSignClient(c))}
+                      title={c.consentAt ? `Firmado el ${fmtDate(c.consentAt)}` : 'Leer y firmar el consentimiento'}
+                    >
+                      {c.consentAt ? '✓ Firmado' : 'Sin firmar'}
+                    </button>
+                  </span>
+                )}
               </td>
               <td className="row-actions">
                 <a className="btn" href={api.exportClientUrl(c.id)} target="_blank" rel="noreferrer"
@@ -212,7 +272,7 @@ export default function Clients({ initialFilter }) {
               </td>
             </tr>
           ))}
-          {visible.length === 0 && <EmptyRow colSpan={7} />}
+          {visible.length === 0 && <EmptyRow colSpan={8} />}
         </tbody>
       </table>
 
@@ -260,12 +320,38 @@ export default function Clients({ initialFilter }) {
               </select>
             </Field>
           </div>
+          {!editingId ? (
+            <div className="fiscal consent consent-sign">
+              <strong>Consentimiento (RGPD)</strong>
+              <p className="muted small">
+                Aquí guardas datos de salud, así que antes necesitas su permiso. Se abre el documento para que ella
+                lo lea y lo firme, y la firma se guarda con la ficha.
+              </p>
+              {pendingSignature ? (
+                <p>
+                  <span className="saved-note">Firmado. Se guardará al crear la ficha.</span>{' '}
+                  <button type="button" onClick={() => setSignOpen(true)}>Volver a firmar</button>
+                </p>
+              ) : (
+                <button type="button" className="primary" onClick={() => setSignOpen(true)}>
+                  Leer y firmar el consentimiento
+                </button>
+              )}
+            </div>
+          ) : (
           <details className="fiscal consent" open={!form.consentAt || consentOpen}>
             <summary>Consentimiento (RGPD)</summary>
             <p className="muted small">
               Aquí guardas datos de salud, así que antes necesitas su permiso y poder demostrar cuándo y
               cómo te lo dio. El texto que acepta está en Ajustes · Privacidad.
             </p>
+            {!form.consentAt && (
+              <p>
+                <button type="button" className="primary" onClick={() => setSignOpen(true)}>
+                  Leer y firmar el consentimiento
+                </button>
+              </p>
+            )}
             <div className="form-grid">
               <Field label="Fecha del consentimiento">
                 <input type="date" value={form.consentAt} onChange={set('consentAt')} />
@@ -293,6 +379,7 @@ export default function Clients({ initialFilter }) {
               }}
             />
           </details>
+          )}
 
           <details className="fiscal" open={FISCAL.some((f) => form[f] && form[f] !== 'España')}>
             <summary>Datos fiscales (para poder facturarle)</summary>
@@ -324,13 +411,61 @@ export default function Clients({ initialFilter }) {
         </Modal>
       )}
 
+      {signOpen && (
+        <ConsentSignModal
+          clientName={form.name}
+          consentText={config.privacy.consentText}
+          consentVersion={config.privacy.consentVersion}
+          onClose={() => setSignOpen(false)}
+          onSigned={onSigned}
+        />
+      )}
+
+      {recordId !== null && (
+        <ClientRecord
+          refreshKey={recordKey}
+          clientId={recordId}
+          formState={(() => {
+            const c = rows.find((r) => r.id === recordId);
+            const q = c && questionnaire(c);
+            return q ? { kind: q.kind, status: q.row ? q.row.status : null } : undefined;
+          })()}
+          onClose={() => setRecordId(null)}
+          onChanged={load}
+          onQuestionnaire={(client, kind) => {
+            const done = formStatus[client.id]?.find((f) => f.kind === kind)?.status === 'completo';
+            setFormFor({ client, kind, startLocked: done });
+          }}
+          onSign={setSignClient}
+        />
+      )}
+
+      {signClient && (
+        <ConsentSignModal
+          clientName={signClient.name}
+          consentText={config.privacy.consentText}
+          consentVersion={config.privacy.consentVersion}
+          onClose={() => setSignClient(null)}
+          onSigned={async (signature) => {
+            await api.consent(signClient.id, { action: 'grant', signature });
+            setSignClient(null);
+            await load();
+            setRecordKey((k) => k + 1); // la ficha abierta recoge el consentimiento nuevo
+          }}
+        />
+      )}
+
       {formFor && (
         <QuestionnaireModal
           client={formFor.client}
           kind={formFor.kind}
+          startLocked={formFor.startLocked}
           cancelLabel={formFor.fromCreate ? 'Lo relleno más tarde' : 'Cancelar'}
           onClose={() => setFormFor(null)}
-          onSaved={load}
+          onSaved={() => {
+            load();
+            setRecordKey((k) => k + 1);
+          }}
         />
       )}
     </section>

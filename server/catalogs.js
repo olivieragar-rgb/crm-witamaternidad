@@ -43,7 +43,7 @@ export const TYPES = {
   },
   consentChannel: {
     label: 'Canales de consentimiento',
-    defaults: ['Presencial', 'Email', 'Formulario web', 'Papel firmado'],
+    defaults: ['Presencial', 'Email', 'Formulario web', 'Papel firmado', 'Firma en pantalla'],
   },
   paymentMethod: {
     label: 'Formas de pago',

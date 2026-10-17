@@ -2350,6 +2350,41 @@ a.export {
   margin-top: 12px;
 }
 
+.consent-doc p {
+  line-height: 1.5;
+}
+.consent-text {
+  padding: 12px 14px;
+  border-left: 3px solid var(--accent, #476149);
+  background: rgba(71, 97, 73, 0.07);
+  border-radius: 4px;
+}
+.consent-accept {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0;
+}
+.signature-box {
+  position: relative;
+}
+.signature-pad {
+  display: block;
+  width: 100%;
+  aspect-ratio: 500 / 170;
+  background: #fff;
+  border: 1px dashed #b9b1a5;
+  border-radius: 6px;
+  touch-action: none;
+  cursor: crosshair;
+}
+.signature-clear {
+  margin-top: 6px;
+}
+.consent-sign p {
+  margin: 6px 0;
+}
+
 /* El círculo con «?»: explica qué poner en un campo y dónde. */
 .help-mark {
   display: inline-flex;
@@ -2466,5 +2501,150 @@ a.export {
 .cust-choice {
   display: flex;
   flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* ---- ficha de clienta ---- */
+.modal-wide {
+  max-width: 880px;
+}
+.record-head {
+  align-items: flex-start;
+}
+.record-head h2 {
+  margin: 0 0 4px;
+}
+.record-sub {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.record-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.lock-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  border-radius: var(--radius-full);
+  padding: 6px 14px;
+  background: var(--bg-warm);
+}
+.lock-btn.is-open {
+  background: var(--terracotta-light);
+  color: var(--terracotta-dark);
+}
+.status-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.status-chip {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  background: var(--bg-warm);
+  color: var(--text-muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.status-chip.is-done {
+  background: var(--green-light);
+  color: var(--green-dark);
+}
+.status-chip.is-todo {
+  background: var(--terracotta-light);
+  color: var(--terracotta-dark);
+}
+.record-section {
+  margin: 0 0 22px;
+}
+.record-section h3 {
+  margin: 0 0 10px;
+  font-size: 15px;
+}
+.record-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.record-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+.new-visit {
+  background: var(--bg-warm);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+.weight-input {
+  width: 78px;
+}
+.pct-badge {
+  display: inline-block;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  background: var(--green-light);
+  color: var(--green-dark);
+}
+.pct-badge.tone-low,
+.pct-badge.tone-high {
+  background: var(--terracotta-light);
+  color: var(--terracotta-dark);
+}
+.percentile-line {
+  margin: 10px 0;
+}
+.percentile-line.tone-low,
+.percentile-line.tone-high {
+  color: var(--terracotta-dark);
+}
+.note-add {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  margin-bottom: 12px;
+}
+.note-add textarea {
+  flex: 1;
+}
+.note-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+.note-list li {
+  border: 1px solid var(--border, #e6dfd5);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+}
+.note-text {
+  margin: 4px 0;
+  white-space: pre-wrap;
+}
+.plain-fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.inline-field {
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
 }

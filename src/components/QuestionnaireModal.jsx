@@ -20,8 +20,11 @@ const OTHER = 'Otro';
  *   cancelLabel?: string,
  * }} props
  */
-export default function QuestionnaireModal({ client, kind: initialKind, onClose, onSaved, cancelLabel }) {
+export default function QuestionnaireModal({ client, kind: initialKind, onClose, onSaved, cancelLabel, startLocked = false }) {
   const [kind, setKind] = useState(initialKind);
+  // Un cuestionario ya completo se abre bloqueado, para no cambiar una
+  // respuesta por error. El candado lo abre; al cerrar vuelve a bloquearse.
+  const [locked, setLocked] = useState(startLocked);
   const [data, setData] = useState({});
   // Campos cuyo desplegable esta en "Otro". Es estado de pantalla y no dato:
   // en la base solo queda el texto que escribio.
@@ -118,11 +121,20 @@ export default function QuestionnaireModal({ client, kind: initialKind, onClose,
     <Modal
       title={`${QUESTIONNAIRES[kind].label} · ${client.name}`}
       onClose={onClose}
-      onSubmit={save}
-      submitLabel="Guardar cuestionario"
+      onSubmit={locked ? onClose : save}
+      submitLabel={locked ? 'Cerrar' : 'Guardar cuestionario'}
       cancelLabel={cancelLabel ?? 'Cancelar'}
+      hideCancel={locked}
       error={error}
     >
+      {startLocked && (
+        <p className="locked-note">
+          <button type="button" className={'lock-btn' + (locked ? '' : ' is-open')} onClick={() => setLocked((l) => !l)}>
+            <span aria-hidden="true">{locked ? '🔒' : '🔓'}</span> {locked ? 'Bloqueado' : 'Editando'}
+          </button>{' '}
+          {locked ? 'Está completo y bloqueado para no cambiarlo por error. Pulsa el candado para editarlo.' : 'Se volverá a bloquear al cerrar.'}
+        </p>
+      )}
       {!client.consentAt && (
         <p className="notice">
           <strong>Sin consentimiento registrado.</strong> Vas a anotar datos de salud suyos y del bebé.
@@ -145,12 +157,14 @@ export default function QuestionnaireModal({ client, kind: initialKind, onClose,
         <p className="muted">Cargando…</p>
       ) : (
         <>
-          {fields.map((f) => (
-            <Field key={f.id} label={f.required ? `${f.label}*` : f.label}>
-              {control(f)}
-              {f.hint && <span className="muted small">{f.hint}</span>}
-            </Field>
-          ))}
+          <fieldset className="plain-fieldset" disabled={locked}>
+            {fields.map((f) => (
+              <Field key={f.id} label={f.required ? `${f.label}*` : f.label}>
+                {control(f)}
+                {f.hint && <span className="muted small">{f.hint}</span>}
+              </Field>
+            ))}
+          </fieldset>
           <p className="muted small">
             {pendiente
               ? 'Puedes guardarlo a medias: queda marcado como pendiente hasta que estén las preguntas con asterisco.'

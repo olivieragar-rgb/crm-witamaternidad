@@ -241,9 +241,9 @@ export default function Invoices({ initialFilter }) {
     }
   }
 
-  async function changeStatus(row, next) {
+  async function changeStatus(row, next, paymentMethod) {
     try {
-      await api.invoiceStatus(row.id, { status: next });
+      await api.invoiceStatus(row.id, { status: next, ...(paymentMethod ? { paymentMethod } : {}) });
       load();
       if (detail?.id === row.id) setDetail(await api.get('invoices', row.id));
     } catch (e) {
@@ -546,7 +546,8 @@ export default function Invoices({ initialFilter }) {
         <InvoiceDetail
           inv={detail}
           onClose={() => setDetail(null)}
-          onStatus={(s) => changeStatus(detail, s)}
+          onStatus={(s, method) => changeStatus(detail, s, method)}
+          paymentMethods={options(config.catalogs.paymentMethod, detail.paymentMethod)}
           onRectify={() => rectify(detail)}
           onVoid={() => voidInvoice(detail)}
           onEmail={() => emailInvoice(detail)}
@@ -733,8 +734,10 @@ export default function Invoices({ initialFilter }) {
 }
 
 /** Ficha de una factura ya emitida: se mira, no se edita. */
-function InvoiceDetail({ inv, onClose, onStatus, onRectify, onVoid, onEmail, onRemind }) {
+function InvoiceDetail({ inv, onClose, onStatus, onRectify, onVoid, onEmail, onRemind, paymentMethods }) {
   const closed = inv.status === 'Rectificada' || inv.status === 'Anulada';
+  // Cómo se paga: se elige aquí, al cobrarla, y queda en la factura.
+  const [method, setMethod] = useState(inv.paymentMethod || '');
   return (
     <Modal title={`Factura ${inv.number}`} onClose={onClose} onSubmit={onClose} submitLabel="Cerrar" hideCancel>
       <p className="locked-note">
@@ -756,6 +759,10 @@ function InvoiceDetail({ inv, onClose, onStatus, onRectify, onVoid, onEmail, onR
           <span className="muted">Estado</span>
           <Badge value={inv.status} />
           {inv.paidAt && <span className="muted">Cobrada {fmtDate(inv.paidAt)}</span>}
+        </div>
+        <div>
+          <span className="muted">Forma de pago</span>
+          <strong>{inv.paymentMethod || '—'}</strong>
         </div>
         <div>
           <span className="muted">Total</span>
@@ -818,8 +825,19 @@ function InvoiceDetail({ inv, onClose, onStatus, onRectify, onVoid, onEmail, onR
                 Recordar el pago
               </button>
             )}
+            {inv.status !== 'Pagada' && (
+              <label className="inline-field">
+                <span className="muted small">Forma de pago</span>
+                <select value={method} onChange={(e) => setMethod(e.target.value)}>
+                  <option value="">—</option>
+                  {paymentMethods.map((m) => (
+                    <option key={m}>{m}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             {PAYMENT_STATES.filter((s) => s !== inv.status).map((s) => (
-              <button key={s} type="button" onClick={() => onStatus(s)}>
+              <button key={s} type="button" onClick={() => onStatus(s, s === 'Pagada' ? method : undefined)}>
                 Marcar {s.toLowerCase()}
               </button>
             ))}

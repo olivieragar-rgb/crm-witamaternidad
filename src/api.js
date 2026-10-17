@@ -96,6 +96,12 @@ export const api = {
   clientForm: (id, kind) => req('GET', `/api/clients/${id}/form?kind=${encodeURIComponent(kind)}`),
   saveClientForm: (id, body) => req('PUT', `/api/clients/${id}/form`, body),
 
+  // Notas de la ficha de la clienta
+  clientNotes: (id) => req('GET', `/api/clients/${id}/notes`),
+  addClientNote: (id, text) => req('POST', `/api/clients/${id}/notes`, { text }),
+  editClientNote: (id, noteId, text) => req('PUT', `/api/clients/${id}/notes/${noteId}`, { text }),
+  removeClientNote: (id, noteId) => req('DELETE', `/api/clients/${id}/notes/${noteId}`),
+
   // Recordatorios
   reminders: () => req('GET', '/api/reminders'),
   reminderPreview: (kind, id) => req('GET', `/api/reminders/preview/${kind}/${id}`),
@@ -111,6 +117,7 @@ export const api = {
   createExpense: (body) => req('POST', '/api/expenses', body),
   updateExpense: (id, body) => req('PUT', `/api/expenses/${id}`, body),
   removeExpense: (id) => req('DELETE', `/api/expenses/${id}`),
+  expensePdfUrl: (id) => `/api/expenses/${id}/pdf`,
   taxes: (year, quarter) => req('GET', `/api/taxes?year=${year}&quarter=${quarter}`),
 
 

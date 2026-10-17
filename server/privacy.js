@@ -20,6 +20,8 @@ const PERSONAL = [
   'postalCode',
   'city',
   'province',
+  'babySex',
+  'babyBirthDate',
 ];
 
 export const privacyRouter = express.Router();
@@ -100,6 +102,10 @@ privacyRouter.post('/:id/anonymize', async (req, res, next) => {
     // Y el cuestionario entero, que es dato de salud de principio a fin: aquí
     // no hay nada que conservar, al contrario que en las facturas.
     await run('DELETE FROM client_forms WHERE clientId = ?', [id]);
+    await run('DELETE FROM consent_signatures WHERE clientId = ?', [id]);
+    // Las notas de la ficha y los pesos del bebé también son datos de salud.
+    await run('DELETE FROM client_notes WHERE clientId = ?', [id]);
+    await run('UPDATE appointments SET babyWeightKg = 0 WHERE clientId = ?', [id]);
 
     await audit(req, {
       action: 'client_anonymize',

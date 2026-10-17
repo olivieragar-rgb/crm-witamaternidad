@@ -9,6 +9,7 @@ import { all, get, run } from './db.js';
 import { searchItems } from '../src/search.js';
 import { audit } from './auth.js';
 import { getSetting } from './settings.js';
+import { expensePdf } from './expense-pdf.js';
 
 const round = (n) => Math.round(n * 100) / 100;
 const num = (v) => Number(v) || 0;
@@ -86,6 +87,20 @@ expensesRouter.get('/', async (req, res, next) => {
         total: round(found.reduce((s, r) => s + r.amounts.total, 0)),
       },
     });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/** El justificante del gasto en PDF, para enviarlo. */
+expensesRouter.get('/:id/pdf', async (req, res, next) => {
+  try {
+    const expense = await get('SELECT * FROM expenses WHERE id = ?', [Number(req.params.id)]);
+    if (!expense) return res.status(404).json({ error: 'No encontrado' });
+    const pdf = await expensePdf(expense, await getSetting('issuer'));
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="gasto-${expense.id}.pdf"`);
+    res.send(pdf);
   } catch (e) {
     next(e);
   }

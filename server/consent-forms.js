@@ -48,7 +48,13 @@ const fmtDate = (d) => {
   return y && m && day ? `${day}/${m}/${y}` : String(d);
 };
 const today = () => new Date().toISOString().slice(0, 10);
-const has = (v) => v !== undefined && v !== null && String(v).trim() !== '';
+
+/** Canal con el que queda registrado un consentimiento firmado en la pantalla. */
+const SIGNED_ON_SCREEN = 'Firma en pantalla';
+const PNG_PREFIX = 'data:image/png;base64,';
+/** Una firma es un PNG pequeño; el límite deja margen bajo los 64 kB de la petición. */
+const isSignature = (s) => s.startsWith(PNG_PREFIX) && s.length <= 60000 && /^[A-Za-z0-9+/=]+$/.test(s.slice(PNG_PREFIX.length));
+const has =(v) => v !== undefined && v !== null && String(v).trim() !== '';
 
 /** "Lucía Fernández" -> "lucia-fernandez", para el nombre del fichero. */
 export const slug = (s) =>
@@ -132,11 +138,14 @@ function checkbox(doc, text, { note, bold } = {}) {
   doc.x = MARGIN;
 }
 
-function signature(doc, { who = 'Firma de la clienta', place = true } = {}) {
+function signature(doc, { who = 'Firma de la clienta', place = true, image = null } = {}) {
   need(doc, 120);
   doc.moveDown(1);
   const y = doc.y;
   const half = width(doc) / 2 - 15;
+  if (image) {
+    doc.image(Buffer.from(image.slice(PNG_PREFIX.length), 'base64'), MARGIN + half + 30, y, { fit: [half, 46] });
+  }
   if (place) {
     doc.font('Helvetica').fontSize(9.5).fillColor(SOFT).text('Lugar y fecha', MARGIN, y + 52, { width: half, lineBreak: false });
     doc.moveTo(MARGIN, y + 48).lineTo(MARGIN + half, y + 48).lineWidth(0.6).strokeColor(INK).stroke();
@@ -280,7 +289,7 @@ function drawConsent(doc, { issuer, privacy, client }) {
     { note: 'Opcional: no hace falta para recibir el servicio y puedes retirarla cuando quieras.' },
   );
 
-  signature(doc, { who: 'Firma de la clienta' });
+  signature(doc, { who: 'Firma de la clienta', image: client?.signature });
   para(doc, 'Se entrega una copia de este documento a la clienta.', { color: MUTED, size: 8.5, gap: 0 });
 }
 
@@ -405,7 +414,12 @@ consentFormsRouter.get('/:kind', async (req, res, next) => {
       }
     }
     const [issuer, privacy] = await Promise.all([getSetting('issuer'), getSetting('privacy')]);
-    const pdf = await consentFormPdf(kind, { issuer, privacy, client });
+    // Si firmó en pantalla, su firma sale en el documento.
+    if (client && kind === 'consentimiento') {
+      const sig = await get('SELECT signature FROM consent_signatures WHERE clientId = ?', [client.id]);
+      if (sig) client = { ...client, signature: sig.signature };
+    }
+    const pdf =await consentFormPdf(kind, { issuer, privacy, client });
     if (client) await audit(req, { action: 'consent_form', entity: 'clients', entityId: client.id, detail: kind });
 
     const file = `${FORMS[kind].file}-${client ? slug(client.name) || client.id : 'en-blanco'}.pdf`;
@@ -446,9 +460,24 @@ consentRouter.post('/:id/consent', async (req, res, next) => {
     if (date > today()) return res.status(400).json({ error: 'La fecha no puede ser futura' });
 
     if (b.action === 'grant') {
-      const channel = String(b.channel || '').trim();
+      // Firmado en pantalla: la firma es un PNG pequeño en data URL.
+      const signature = has(b.signature) ? String(b.signature) : '';
+      if (signature && !isSignature(signature)) {
+        return res.status(400).json({ error: 'La firma no es válida. Vuelve a firmar.' });
+      }
+      const channel = String(b.channel || (signature ? SIGNED_ON_SCREEN : '')).trim();
       if (!channel) return res.status(400).json({ error: 'Indica cómo lo dio: en papel, por email...' });
       const { consentVersion } = await getSetting('privacy');
+      if (signature) {
+        await run(
+          `INSERT INTO consent_signatures (clientId, signature, version, signedAt) VALUES (?, ?, ?, datetime('now'))
+           ON CONFLICT(clientId) DO UPDATE SET signature = excluded.signature, version = excluded.version, signedAt = excluded.signedAt`,
+          [id, signature, String(consentVersion)],
+        );
+      } else {
+        // Un nuevo registro sin firma (papel, email) sustituye al anterior.
+        await run('DELETE FROM consent_signatures WHERE clientId = ?', [id]);
+      }
       await run('UPDATE clients SET consentAt = ?, consentChannel = ?, consentVersion = ? WHERE id = ?', [
         date,
         channel,
@@ -459,13 +488,14 @@ consentRouter.post('/:id/consent', async (req, res, next) => {
         action: 'consent_grant',
         entity: 'clients',
         entityId: id,
-        detail: `${date} · ${channel} · versión ${consentVersion}`,
+        detail: `${date} · ${channel} · versión ${consentVersion}${signature ? ' · con firma' : ''}`,
       });
     } else if (b.action === 'revoke') {
       if (!has(client.consentAt)) {
         return res.status(409).json({ error: 'Esta clienta no tiene consentimiento registrado' });
       }
       await run("UPDATE clients SET consentAt = '', consentChannel = '', consentVersion = '' WHERE id = ?", [id]);
+      await run('DELETE FROM consent_signatures WHERE clientId = ?', [id]);
       await audit(req, {
         action: 'consent_revoke',
         entity: 'clients',

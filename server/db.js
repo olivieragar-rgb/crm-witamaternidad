@@ -203,6 +203,27 @@ const SCHEMA = `
     updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
   );
   CREATE UNIQUE INDEX IF NOT EXISTS idx_client_forms ON client_forms (clientId, kind);
+
+  -- Firma manuscrita del consentimiento, hecha en pantalla. Va aparte de
+  -- clients para no viajar con cada listado, y se borra al retirar el
+  -- consentimiento, al anonimizar o al borrar la ficha.
+  -- Notas de la ficha de una clienta: un historial, no un campo de texto.
+  CREATE TABLE IF NOT EXISTS client_notes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    clientId INTEGER NOT NULL,
+    text TEXT NOT NULL,
+    author TEXT NOT NULL DEFAULT '',
+    createdAt TEXT NOT NULL DEFAULT (datetime('now')),
+    updatedAt TEXT NOT NULL DEFAULT ''
+  );
+  CREATE INDEX IF NOT EXISTS idx_client_notes ON client_notes (clientId, createdAt DESC);
+
+  CREATE TABLE IF NOT EXISTS consent_signatures (
+    clientId INTEGER PRIMARY KEY,
+    signature TEXT NOT NULL,
+    version TEXT NOT NULL DEFAULT '',
+    signedAt TEXT NOT NULL DEFAULT (datetime('now'))
+  );
 `;
 
 // Columnas e indices que se anadieron despues de la primera version. Se
@@ -241,6 +262,11 @@ const COLUMNS = [
   ['clients', 'consentChannel', "TEXT NOT NULL DEFAULT ''"],
   ['clients', 'consentVersion', "TEXT NOT NULL DEFAULT ''"],
   ['clients', 'anonymizedAt', "TEXT NOT NULL DEFAULT ''"],
+  // Para el percentil de peso: sexo y fecha de nacimiento del bebé ('girl'|'boy'|'').
+  ['clients', 'babySex', "TEXT NOT NULL DEFAULT ''"],
+  ['clients', 'babyBirthDate', "TEXT NOT NULL DEFAULT ''"],
+  // Peso del bebé (kg) medido en esa visita; 0 = no se pesó.
+  ['appointments', 'babyWeightKg', 'REAL NOT NULL DEFAULT 0'],
 
   // Fecha del ultimo recordatorio enviado, para no repetirlo sin querer.
   ['invoices', 'remindedAt', "TEXT NOT NULL DEFAULT ''"],

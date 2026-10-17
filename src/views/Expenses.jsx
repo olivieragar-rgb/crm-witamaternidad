@@ -159,6 +159,10 @@ export default function Expenses() {
               <td className="num">{eur(r.amounts.vat)}</td>
               <td className="num">{eur(r.amounts.total)}</td>
               <td className="row-actions">
+                <a className="btn" href={api.expensePdfUrl(r.id)} target="_blank" rel="noreferrer"
+                   title="Justificante del gasto en PDF, para enviarlo">
+                  PDF
+                </a>
                 <button onClick={() => edit(r)}>Editar</button>
                 <button className="danger" onClick={() => remove(r)}>
                   Borrar

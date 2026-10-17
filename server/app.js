@@ -9,6 +9,7 @@ import { settingsRouter, getSetting } from './settings.js';
 import { catalogsRouter, getCatalogs } from './catalogs.js';
 import { privacyRouter, auditRouter } from './privacy.js';
 import { consentFormsRouter, consentRouter } from './consent-forms.js';
+import { clientNotesRouter } from './client-notes.js';
 import { prefsRouter } from './prefs.js';
 import { LIST_SIZES } from '../src/lib/dashboard-layout.js';
 import { questionnairesRouter } from './questionnaires.js';
@@ -82,7 +83,7 @@ app.use('/api', requireAuth);
 
 // Campos que se guardan como numero. Los que apuntan a otra tabla admiten
 // null, porque una cita puede no tener clienta asignada.
-const NUMERIC = new Set(['price', 'durationMin', 'active', 'clientId', 'serviceId', 'qty', 'vat']);
+const NUMERIC = new Set(['price', 'durationMin', 'active', 'clientId', 'serviceId', 'qty', 'vat', 'babyWeightKg']);
 const NULLABLE_REFS = new Set(['clientId', 'serviceId']);
 
 function normalize(field, value) {
@@ -204,6 +205,8 @@ app.use('/api/clients', privacyRouter);
 app.use('/api/clients', questionnairesRouter);
 // Registrar que firmó o retiró el consentimiento: se audita sola, con su nombre.
 app.use('/api/clients', consentRouter);
+// Notas de la ficha: se auditan solas, como el consentimiento.
+app.use('/api/clients', clientNotesRouter);
 app.use('/api/consent-forms', consentFormsRouter);
 app.use('/api/prefs', prefsRouter);
 app.use('/api/audit', auditRouter);
@@ -229,7 +232,7 @@ app.use(
     fields: [
       'name', 'email', 'phone', 'service', 'mode', 'dueDate', 'status', 'notes',
       'taxId', 'address', 'postalCode', 'city', 'province', 'country',
-      'consentAt', 'consentChannel', 'consentVersion',
+      'consentAt', 'consentChannel', 'consentVersion', 'babySex', 'babyBirthDate',
     ],
     required: ['name'],
     orderBy: 'name',
@@ -254,6 +257,8 @@ app.use(
     // base para siempre. Borrar una ficha tiene que llevarselas.
     afterDelete: async (id) => {
       await run('DELETE FROM client_forms WHERE clientId = ?', [id]);
+      await run('DELETE FROM consent_signatures WHERE clientId = ?', [id]);
+      await run('DELETE FROM client_notes WHERE clientId = ?', [id]);
     },
   }),
 );
@@ -303,7 +308,7 @@ app.use(
   '/api/appointments',
   crud({
     table: 'appointments',
-    fields: ['clientId', 'serviceId', 'date', 'mode', 'status', 'notes'],
+    fields: ['clientId', 'serviceId', 'date', 'mode', 'status', 'notes', 'babyWeightKg'],
     orderBy: 'date DESC',
   }),
 );
