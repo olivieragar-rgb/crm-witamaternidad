@@ -121,6 +121,17 @@ export default function Calendar({ go }) {
     const fresh = await api.list('notes');
     setNotes(fresh);
   }
+  // Es la misma cita que se ve en Citas: al borrarla aquí desaparece de las dos.
+  async function delAppt(a) {
+    const quien = a.clientName || 'esta clienta';
+    if (!confirm(`¿Borrar la cita de ${quien} a las ${(a.date || '').slice(11, 16)}?\nTambién desaparece de Citas.`)) return;
+    try {
+      await api.remove('appointments', a.id);
+      setAppts(await api.list('appointments'));
+    } catch (e) {
+      alert(e.message);
+    }
+  }
   async function delNote(id) {
     await api.remove('notes', id);
     setNotes(await api.list('notes'));
@@ -250,6 +261,9 @@ export default function Calendar({ go }) {
                     {(a.date || '').slice(11, 16)}{' '}
                     <button type="button" onClick={() => go('appointments', { editId: a.id })}>
                       Editar
+                    </button>{' '}
+                    <button type="button" className="danger" onClick={() => delAppt(a)}>
+                      Eliminar
                     </button>
                   </span>
                 </li>

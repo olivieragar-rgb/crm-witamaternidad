@@ -50,14 +50,19 @@ const TABS = [
 // Lo marcado como obligatorio lo exige el artículo 6.1 del RD 1619/2012
 // (Reglamento de facturación). Sin esos datos la factura no es válida.
 const ISSUER_FIELDS = [
-  { key: 'name', label: 'Nombre y apellidos o razón social', required: true },
-  { key: 'taxId', label: 'NIF / CIF', required: true },
-  { key: 'address', label: 'Domicilio fiscal', required: true },
+  {
+    key: 'name',
+    label: 'Nombre y apellidos o razón social',
+    required: true,
+    help: 'Tu nombre y apellidos si eres autónoma, o la razón social de tu sociedad, tal como figura en Hacienda.',
+  },
+  { key: 'taxId', label: 'NIF / CIF', required: true, help: 'Tu NIF si eres autónoma, o el CIF de tu sociedad.' },
+  { key: 'address', label: 'Domicilio fiscal', required: true, help: 'El que tienes dado de alta en Hacienda. Sale en todas tus facturas.' },
   { key: 'postalCode', label: 'Código postal', required: true },
   { key: 'city', label: 'Población', required: true },
   { key: 'province', label: 'Provincia' },
   { key: 'country', label: 'País' },
-  { key: 'email', label: 'Email' },
+  { key: 'email', label: 'Email', help: 'Sale en la factura y en los formularios de consentimiento, para que te puedan contactar.' },
   { key: 'phone', label: 'Teléfono' },
   {
     key: 'registryData',
@@ -135,7 +140,7 @@ export default function Settings({ me }) {
           </p>
           <div className="form-grid">
             {ISSUER_FIELDS.filter((f) => !f.wide).map((f) => (
-              <Field key={f.key} label={f.label + (f.required ? ' *' : '')}>
+              <Field key={f.key} label={f.label + (f.required ? ' *' : '')} help={f.help}>
                 <input value={draft.issuer[f.key]} onChange={set('issuer', f.key)} />
               </Field>
             ))}
@@ -155,17 +160,26 @@ export default function Settings({ me }) {
       {tab === 'invoicing' && (
         <div className="panel">
           <div className="form-grid">
-            <Field label="Serie de las facturas">
+            <Field
+              label="Serie de las facturas"
+              help="Letras que van delante del número, por ejemplo «A». Vacío, la primera del año es la 2027-0001; con «A», la A2027-0001."
+            >
               <input
                 value={draft.invoicing.series}
                 onChange={set('invoicing', 'series')}
                 placeholder={`(vacío: ${new Date().getFullYear()}-0001)`}
               />
             </Field>
-            <Field label="Serie de las rectificativas">
+            <Field
+              label="Serie de las rectificativas"
+              help="Las rectificativas llevan su propia numeración para distinguirlas, por ejemplo con una «R»."
+            >
               <input value={draft.invoicing.rectifySeries} onChange={set('invoicing', 'rectifySeries')} />
             </Field>
-            <Field label="IVA por defecto %">
+            <Field
+              label="IVA por defecto %"
+              help="El que se pone solo en cada línea nueva. Cada línea puede cambiarlo. Si tu servicio está exento, 0."
+            >
               <input
                 type="number"
                 step="1"
@@ -174,7 +188,10 @@ export default function Settings({ me }) {
                 onChange={set('invoicing', 'vatRate')}
               />
             </Field>
-            <Field label="Retención de IRPF por defecto %">
+            <Field
+              label="Retención de IRPF por defecto %"
+              help="Se aplica solo en las facturas nuevas. Si facturas sobre todo a particulares, 0; cada factura puede cambiarlo."
+            >
               <input
                 type="number"
                 step="0.01"
@@ -185,15 +202,16 @@ export default function Settings({ me }) {
             </Field>
           </div>
 
-          <Field label="Nota de exención de IVA">
+          <Field
+            label="Nota de exención de IVA"
+            help="Sale en la factura cuando el IVA es cero. Si facturas servicios sanitarios exentos, tienes que ponerla: es el motivo legal de que no lleve IVA. Pregunta a tu gestoría qué artículo te corresponde."
+          >
             <textarea rows={3} value={draft.invoicing.exemptionNote} onChange={set('invoicing', 'exemptionNote')} />
           </Field>
-          <p className="muted small">
-            Sale en la factura cuando el IVA es cero. Si facturas servicios sanitarios exentos, tienes que
-            ponerlo.
-          </p>
-
-          <Field label="Datos de pago (salen en la factura)">
+          <Field
+            label="Datos de pago (salen en la factura)"
+            help="Cómo te pueden pagar: IBAN, Bizum… Se imprime en la factura para que tu cliente no tenga que preguntar."
+          >
             <textarea
               rows={2}
               value={draft.invoicing.paymentDetails}
@@ -202,7 +220,7 @@ export default function Settings({ me }) {
             />
           </Field>
 
-          <Field label="Pie de la factura">
+          <Field label="Pie de la factura" help="Una línea fija al final de cada factura, por ejemplo «Gracias por tu confianza».">
             <input value={draft.invoicing.footer} onChange={set('invoicing', 'footer')} />
           </Field>
 

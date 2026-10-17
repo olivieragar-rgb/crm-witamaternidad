@@ -2342,3 +2342,50 @@ a.export {
 .consent-tools {
   margin-top: 12px;
 }
+
+/* El círculo con «?»: explica qué poner en un campo y dónde. */
+.help-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 6px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  font: 700 10px/1 var(--font-body);
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--text-muted);
+  background: transparent;
+  cursor: help;
+  vertical-align: middle;
+  transition: color var(--dur) var(--ease-out), background var(--dur) var(--ease-out);
+}
+
+.help-mark:hover,
+.help-mark:focus {
+  color: var(--card);
+  background: var(--green);
+  border-color: var(--green);
+  outline: none;
+}
+
+.help-mark:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+.help-pop ol {
+  margin: 4px 0 6px;
+  padding-left: 18px;
+}
+
+.help-pop li + li {
+  margin-top: 2px;
+}
+
+/* En la cabecera de las líneas de factura el "?" va pegado a su título, no debajo. */
+.items-head > span {
+  white-space: nowrap;
+}

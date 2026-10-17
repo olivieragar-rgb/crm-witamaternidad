@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, eur, fmtDate } from '../api.js';
-import { Toolbar, Badge, Modal, Field, EmptyRow } from '../components/ui.jsx';
+import { Toolbar, Badge, Modal, Field, EmptyRow, HelpMark } from '../components/ui.jsx';
 import { useConfig, options } from '../config.jsx';
 import ReminderModal from '../components/ReminderModal.jsx';
 
@@ -17,6 +17,40 @@ const MONTHS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11'
 const monthLabel = (m) => {
   const name = new Date(2000, Number(m) - 1, 1).toLocaleDateString('es-ES', { month: 'short' });
   return name.charAt(0).toUpperCase() + name.slice(1).replace('.', '');
+};
+
+// Qué poner en cada sitio. La facturación es lo más enrevesado de la
+// aplicación, así que cada campo dice qué se espera y de dónde sale.
+const HELP = {
+  page: (
+    <>
+      Así funciona una factura:
+      <ol>
+        <li>«Nueva factura» crea un <strong>borrador</strong>: lo puedes cambiar y borrar cuando quieras.</li>
+        <li>Al <strong>emitirla</strong> recibe su número definitivo y ya no se puede modificar.</li>
+        <li>Envíala por email o descarga el PDF.</li>
+        <li>Cuando te paguen, márcala como <strong>pagada</strong>.</li>
+      </ol>
+      Si te equivocas en una emitida, haz una <strong>rectificativa</strong>.
+    </>
+  ),
+  status:
+    'Borrador: aún se puede editar. Emitida: ya tiene número. Enviada: se la has mandado. Pagada: cobrada. Rectificada y Anulada: corregida o cancelada; siguen guardadas.',
+  year: 'Cada año tiene su propia numeración: la primera de cada año es la 0001. Las facturas de años anteriores siguen aquí.',
+  client: 'A quién le haces la factura. Para emitirla necesita NIF en su ficha (Clientas → Editar → Datos fiscales). Las que no lo tienen salen con «sin NIF».',
+  date: 'El día en que haces la factura. De ahí salen el año y el número: la primera de cada año es la 0001.',
+  due: 'Hasta cuándo puede pagarla. Si lo dejas vacío, cuenta como vencida pasados unos días de cortesía (Ajustes → Recordatorios).',
+  payment: 'Cómo te va a pagar. Sale en la factura.',
+  operation: 'Solo la necesitas si prestaste el servicio en un día distinto al de la factura. Si coincide, déjala vacía y no saldrá en el PDF.',
+  irpf: 'Lo que tu cliente te retiene y paga a Hacienda por ti. Se aplica cuando facturas como profesional a una empresa o a otro autónomo (suele ser el 15 %, o el 7 % los primeros años). A particulares, 0. Si dudas, pregúntalo a tu gestoría.',
+  concept: 'Lo que has hecho, como quieres que lo lea tu cliente. Con «+ servicio…» se rellenan el concepto y el precio desde tus servicios.',
+  qty: 'Cuántas unidades: sesiones, horas, paquetes…',
+  price: 'El precio de UNA unidad, sin IVA.',
+  discount: 'Descuento de esa línea, en porcentaje. Déjalo en 0 si no hay.',
+  vat: 'El impuesto de esa línea. Si tu servicio está exento va al 0 %; si no, al 21 % (o el que te corresponda). Con 0 hay que añadir la nota de exención. Si dudas, pregunta a tu gestoría.',
+  reverse: 'Solo cuando quien declara el IVA es la clienta y no tú; por ejemplo, al facturar a una empresa de otro país de la UE. En la duda, déjalo sin marcar.',
+  exemption: 'El motivo legal por el que no llevas IVA, por ejemplo el artículo de la Ley del IVA que lo exime. Es obligatorio cuando el IVA es 0. Lo normal es dejarlo guardado en Ajustes → Facturación y que salga aquí solo.',
+  notes: 'Texto libre que sale en la factura.',
 };
 
 const blankItem = () => ({ description: '', qty: 1, price: 0, vat: 0, discount: 0 });
@@ -326,6 +360,7 @@ export default function Invoices({ initialFilter }) {
         setQuery={filterSetter(setQuery)}
         onNew={newRow}
         newLabel="Nueva factura"
+        help={HELP.page}
       />
 
       {settings && !issuerReady && (
@@ -336,7 +371,10 @@ export default function Invoices({ initialFilter }) {
       )}
 
       <div className="filters">
-        <span className="muted">Estado:</span>
+        <span className="muted">
+          Estado:
+          <HelpMark help={HELP.status} label="Ayuda: estados de una factura" />
+        </span>
         {FILTERS.map((f) => (
           <button
             key={f.value || 'todas'}
@@ -375,7 +413,10 @@ export default function Invoices({ initialFilter }) {
       )}
 
       <div className="filters">
-        <span className="muted">Año:</span>
+        <span className="muted">
+          Año:
+          <HelpMark help={HELP.year} label="Ayuda: años y numeración" />
+        </span>
         <button className={'chip' + (year === '' ? ' active' : '')} onClick={() => filterSetter(setYear)('')}>
           Todos
         </button>
@@ -535,7 +576,7 @@ export default function Invoices({ initialFilter }) {
           submitLabel={editingId ? 'Guardar borrador' : 'Crear borrador'}
         >
           <div className="form-grid">
-            <Field label="Clienta">
+            <Field label="Clienta" help={HELP.client}>
               <select value={form.clientId} onChange={set('clientId')}>
                 <option value="">—</option>
                 {clients.map((c) => (
@@ -546,7 +587,7 @@ export default function Invoices({ initialFilter }) {
                 ))}
               </select>
             </Field>
-            <Field label="Fecha">
+            <Field label="Fecha" help={HELP.date}>
               <input type="date" value={form.date} onChange={set('date')} />
               {preview && (
                 <small className="muted">
@@ -555,10 +596,10 @@ export default function Invoices({ initialFilter }) {
                 </small>
               )}
             </Field>
-            <Field label="Vencimiento">
+            <Field label="Vencimiento" help={HELP.due}>
               <input type="date" value={form.dueDate} onChange={set('dueDate')} />
             </Field>
-            <Field label="Forma de pago">
+            <Field label="Forma de pago" help={HELP.payment}>
               <select value={form.paymentMethod} onChange={set('paymentMethod')}>
                 <option value="">—</option>
                 {options(config.catalogs.paymentMethod, form.paymentMethod).map((m) => (
@@ -566,21 +607,36 @@ export default function Invoices({ initialFilter }) {
                 ))}
               </select>
             </Field>
-            <Field label="Fecha de la operación">
+            <Field label="Fecha de la operación" help={HELP.operation}>
               <input type="date" value={form.operationDate} onChange={set('operationDate')} />
             </Field>
-            <Field label="Retención IRPF %">
+            <Field label="Retención IRPF %" help={HELP.irpf}>
               <input type="number" step="0.01" min="0" max="100" value={form.irpfRate} onChange={set('irpfRate')} />
             </Field>
           </div>
 
           <div className="items">
             <div className="items-head items-head-6">
-              <span>Concepto</span>
-              <span className="num">Cant.</span>
-              <span className="num">Precio</span>
-              <span className="num">Dto %</span>
-              <span className="num">IVA %</span>
+              <span>
+                Concepto
+                <HelpMark help={HELP.concept} label="Ayuda: concepto" />
+              </span>
+              <span className="num">
+                Cant.
+                <HelpMark help={HELP.qty} label="Ayuda: cantidad" />
+              </span>
+              <span className="num">
+                Precio
+                <HelpMark help={HELP.price} label="Ayuda: precio" />
+              </span>
+              <span className="num">
+                Dto %
+                <HelpMark help={HELP.discount} label="Ayuda: descuento" />
+              </span>
+              <span className="num">
+                IVA %
+                <HelpMark help={HELP.vat} label="Ayuda: IVA" />
+              </span>
               <span className="num">Importe</span>
               <span></span>
             </div>
@@ -648,22 +704,16 @@ export default function Invoices({ initialFilter }) {
             </div>
           </div>
 
-          <p className="muted small">
-            La fecha de la operación solo la necesitas si prestaste el servicio en un día distinto al de la
-            factura. Si coincide, déjala vacía y no saldrá en el PDF.
-          </p>
-
           <label className="check">
             <input type="checkbox" checked={!!form.reverseCharge} onChange={set('reverseCharge')} />
-            <span>Inversión del sujeto pasivo</span>
+            <span>
+              Inversión del sujeto pasivo
+              <HelpMark help={HELP.reverse} label="Ayuda: inversión del sujeto pasivo" />
+            </span>
           </label>
-          <p className="muted small">
-            Solo cuando quien declara el IVA es la clienta y no tú; por ejemplo al facturar a una empresa de
-            otro país de la UE. En la duda, déjalo sin marcar.
-          </p>
 
           {t.vat === 0 && (
-            <Field label="Nota de exención de IVA (sale en la factura)">
+            <Field label="Nota de exención de IVA (sale en la factura)" help={HELP.exemption}>
               <textarea
                 rows={2}
                 value={form.exemptionNote}
@@ -673,7 +723,7 @@ export default function Invoices({ initialFilter }) {
             </Field>
           )}
 
-          <Field label="Notas">
+          <Field label="Notas" help={HELP.notes}>
             <textarea rows={2} value={form.notes} onChange={set('notes')} />
           </Field>
         </Modal>

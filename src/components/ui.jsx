@@ -86,6 +86,35 @@ export function HelpTitle({ as: Tag = 'h2', help, className, children }) {
 }
 
 /**
+ * El círculo con «?» que explica qué poner en un campo y dónde. Sale al dejar
+ * el ratón encima (o el foco, o un toque). Pensado para ir pegado a una
+ * etiqueta, por eso no deja que el clic llegue al campo de al lado.
+ *
+ * @param {{ help: import('react').ReactNode, label?: string }} props
+ */
+export function HelpMark({ help, label = 'Ayuda' }) {
+  const { anchorRef, bind, popup } = useHelpPop(help);
+  return (
+    <span
+      ref={anchorRef}
+      className="help-mark"
+      role="button"
+      tabIndex={0}
+      aria-label={label}
+      {...bind}
+      onClick={(e) => {
+        // Dentro de un <label>, un clic aquí enfocaría el campo.
+        e.preventDefault();
+        e.stopPropagation();
+        bind.onClick();
+      }}
+    >
+      ?{popup}
+    </span>
+  );
+}
+
+/**
  * Lo mismo para un control que ya es interactivo (una pestaña): le saca el
  * pop-up sin cambiarle el aspecto ni el comportamiento. El foco del botón de
  * dentro sube hasta aquí, así que también sale con el teclado.
@@ -102,10 +131,13 @@ export function HelpTip({ help, children }) {
   );
 }
 
-export function Toolbar({ title, query, setQuery, onNew, newLabel = 'Nueva' }) {
+export function Toolbar({ title, query, setQuery, onNew, newLabel = 'Nueva', help }) {
   return (
     <div className="toolbar">
-      <h1>{title}</h1>
+      <h1>
+        {title}
+        {help && <HelpMark help={help} label={`Cómo funciona: ${title}`} />}
+      </h1>
       <div className="toolbar-actions">
         {setQuery && (
           <input
@@ -201,10 +233,13 @@ export function Modal({
   );
 }
 
-export function Field({ label, children }) {
+export function Field({ label, help, children }) {
   return (
     <label className="field">
-      <span>{label}</span>
+      <span>
+        {label}
+        {help && <HelpMark help={help} label={`Ayuda: ${label}`} />}
+      </span>
       {children}
     </label>
   );
