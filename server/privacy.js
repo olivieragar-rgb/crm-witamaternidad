@@ -8,6 +8,7 @@ import { all, get, run } from './db.js';
 import { requireAdmin, audit } from './auth.js';
 import { getSetting } from './settings.js';
 import { clientForms } from './questionnaires.js';
+import { labelledSections } from '../src/data/record-sections.js';
 
 /** Campos personales que se vacían al anonimizar. */
 const PERSONAL = [
@@ -44,7 +45,11 @@ async function fullClientData(id) {
   // Los cuestionarios de alta son el dato de salud mas detallado que hay
   // aqui: sin ellos el export no es el expediente completo.
   const cuestionarios = await clientForms(id);
-  return { client, appointments, invoices, cuestionarios };
+  // Las secciones de la ficha y las notas son el expediente escrito: sin ellas
+  // el export no es completo.
+  const secciones = labelledSections(await all('SELECT * FROM client_sections WHERE clientId = ?', [id]));
+  const notas = await all('SELECT createdAt, author, text FROM client_notes WHERE clientId = ? ORDER BY createdAt', [id]);
+  return { client, appointments, invoices, cuestionarios, secciones, notas };
 }
 
 /**
@@ -105,6 +110,7 @@ privacyRouter.post('/:id/anonymize', async (req, res, next) => {
     await run('DELETE FROM consent_signatures WHERE clientId = ?', [id]);
     // Las notas de la ficha y los pesos del bebé también son datos de salud.
     await run('DELETE FROM client_notes WHERE clientId = ?', [id]);
+    await run('DELETE FROM client_sections WHERE clientId = ?', [id]);
     await run('UPDATE appointments SET babyWeightKg = 0 WHERE clientId = ?', [id]);
 
     await audit(req, {

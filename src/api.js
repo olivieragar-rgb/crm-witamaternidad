@@ -102,6 +102,9 @@ export const api = {
   editClientNote: (id, noteId, text) => req('PUT', `/api/clients/${id}/notes/${noteId}`, { text }),
   removeClientNote: (id, noteId) => req('DELETE', `/api/clients/${id}/notes/${noteId}`),
 
+  clientSections: (id) => req('GET', `/api/clients/${id}/sections`),
+  saveClientSection: (id, section, data) => req('PUT', `/api/clients/${id}/sections/${section}`, { data }),
+
   // Recordatorios
   reminders: () => req('GET', '/api/reminders'),
   reminderPreview: (kind, id) => req('GET', `/api/reminders/preview/${kind}/${id}`),

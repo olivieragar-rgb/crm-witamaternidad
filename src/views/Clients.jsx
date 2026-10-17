@@ -6,7 +6,6 @@ import { sortRows, nextSort } from '../lib/sort.js';
 import QuestionnaireModal from '../components/QuestionnaireModal.jsx';
 import ConsentTools from '../components/ConsentTools.jsx';
 import ConsentSignModal from '../components/ConsentSignModal.jsx';
-import ClientRecord from '../components/ClientRecord.jsx';
 import { kindForService } from '../data/questionnaires.js';
 import { useConfig, options } from '../config.jsx';
 
@@ -32,8 +31,6 @@ export default function Clients({ initialFilter }) {
   const [consentOpen, setConsentOpen] = useState(false);
   const [signOpen, setSignOpen] = useState(false);
   // La ficha abierta (id) y, si se firma desde el listado o la ficha, de quién es la firma.
-  const [recordId, setRecordId] = useState(null);
-  const [recordKey, setRecordKey] = useState(0);
   const [signClient, setSignClient] = useState(null);
   // Firma hecha antes de que exista la ficha: se guarda al crearla.
   const [pendingSignature, setPendingSignature] = useState('');
@@ -43,6 +40,14 @@ export default function Clients({ initialFilter }) {
   // { [clientId]: Array<{ kind, status }> }, para marcar los pendientes.
   const [formStatus, setFormStatus] = useState({});
 
+  // La ficha se abre en su propia ventana, grande, para leerla y rellenarla con
+  // calma. Si el navegador bloquea la ventana, se abre en esta misma pestaña.
+  function openRecord(id) {
+    const w = window.open(`/?ficha=${id}`, `ficha-${id}`, 'popup=yes,width=1280,height=900');
+    if (!w) window.location.href = `/?ficha=${id}`;
+    else w.focus();
+  }
+
   const load = () => {
     // El resumen de cuestionarios es una peticion para toda la tabla, no una
     // por fila. Si falla, el listado se pinta igual y sin marcas.
@@ -51,6 +56,10 @@ export default function Clients({ initialFilter }) {
   };
   useEffect(() => {
     load();
+    // Al volver de la ventana de la ficha, el listado recoge lo que se cambió allí.
+    const onFocus = () => load();
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
   }, []);
 
   // Estado del cuestionario de una clienta: lo que se pinta y lo que se ordena.
@@ -179,11 +188,11 @@ export default function Clients({ initialFilter }) {
               tabIndex={0}
               onKeyDown={(e) => {
                 soltar(e);
-                if (e.key === 'Enter' && e.target === e.currentTarget) setRecordId(c.id);
+                if (e.key === 'Enter' && e.target === e.currentTarget) openRecord(c.id);
               }}
               onClick={(e) => {
                 // Los botones y enlaces de la fila hacen lo suyo; el resto abre la ficha.
-                if (!e.target.closest('button, a')) setRecordId(c.id);
+                if (!e.target.closest('button, a')) openRecord(c.id);
               }}
               title="Pulsa para abrir su ficha"
             >
@@ -246,7 +255,7 @@ export default function Clients({ initialFilter }) {
                     <button
                       type="button"
                       className={'status-chip ' + (c.consentAt ? 'is-done' : 'is-todo')}
-                      onClick={() => (c.consentAt ? setRecordId(c.id) : setSignClient(c))}
+                      onClick={() => (c.consentAt ? openRecord(c.id) : setSignClient(c))}
                       title={c.consentAt ? `Firmado el ${fmtDate(c.consentAt)}` : 'Leer y firmar el consentimiento'}
                     >
                       {c.consentAt ? '✓ Firmado' : 'Sin firmar'}
@@ -421,25 +430,6 @@ export default function Clients({ initialFilter }) {
         />
       )}
 
-      {recordId !== null && (
-        <ClientRecord
-          refreshKey={recordKey}
-          clientId={recordId}
-          formState={(() => {
-            const c = rows.find((r) => r.id === recordId);
-            const q = c && questionnaire(c);
-            return q ? { kind: q.kind, status: q.row ? q.row.status : null } : undefined;
-          })()}
-          onClose={() => setRecordId(null)}
-          onChanged={load}
-          onQuestionnaire={(client, kind) => {
-            const done = formStatus[client.id]?.find((f) => f.kind === kind)?.status === 'completo';
-            setFormFor({ client, kind, startLocked: done });
-          }}
-          onSign={setSignClient}
-        />
-      )}
-
       {signClient && (
         <ConsentSignModal
           clientName={signClient.name}
@@ -450,7 +440,6 @@ export default function Clients({ initialFilter }) {
             await api.consent(signClient.id, { action: 'grant', signature });
             setSignClient(null);
             await load();
-            setRecordKey((k) => k + 1); // la ficha abierta recoge el consentimiento nuevo
           }}
         />
       )}
@@ -462,10 +451,7 @@ export default function Clients({ initialFilter }) {
           startLocked={formFor.startLocked}
           cancelLabel={formFor.fromCreate ? 'Lo relleno más tarde' : 'Cancelar'}
           onClose={() => setFormFor(null)}
-          onSaved={() => {
-            load();
-            setRecordKey((k) => k + 1);
-          }}
+          onSaved={load}
         />
       )}
     </section>

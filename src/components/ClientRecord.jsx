@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api, fmtDate, gestWeeks } from '../api.js';
 import { Badge, Field } from './ui.jsx';
 import GrowthChart from './GrowthChart.jsx';
 import { useConfig, options } from '../config.jsx';
+import { RECORD_SECTIONS, sectionFilled } from '../data/record-sections.js';
 import { percentileForWeight, readPercentile, daysBetween, formatAge, MAX_DAY } from '../lib/growth.js';
 
 const SEXES = [
@@ -82,15 +83,31 @@ export default function ClientRecord({ clientId, formState, refreshKey = 0, onCl
   const dirty = client && draft && DATA_FIELDS.some((k) => (draft[k] ?? '') !== (client[k] ?? ''));
 
   const close = useCallback(() => {
-    if (dirty && !confirm('Tienes cambios sin guardar en la ficha. ¿Salir sin guardarlos?')) return;
+    if ((dirty || dirtySections.current.size > 0) && !confirm('Tienes cambios sin guardar en la ficha. ¿Salir sin guardarlos?')) return;
     onClose();
   }, [dirty, onClose]);
 
+  // Secciones con cambios sin guardar: se avisa antes de cerrar la ventana.
+  const dirtySections = useRef(new Set());
+  const markDirty = useCallback((id, isDirty) => {
+    if (isDirty) dirtySections.current.add(id);
+    else dirtySections.current.delete(id);
+  }, []);
+  const [sections, setSections] = useState({});
+  const loadSections = useCallback(() => api.clientSections(clientId).then(setSections), [clientId]);
   useEffect(() => {
-    const onKey = (e) => e.key === 'Escape' && close();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [close]);
+    loadSections().catch((e) => setError(e.message));
+  }, [loadSections, refreshKey]);
+  useEffect(() => {
+    const warn = (e) => {
+      if (dirtySections.current.size > 0 || dirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
 
   const flash = (msg) => {
     setSaved(msg);
@@ -191,10 +208,8 @@ export default function ClientRecord({ clientId, formState, refreshKey = 0, onCl
 
   if (!client || !draft) {
     return (
-      <div className="modal-backdrop" onMouseDown={onClose}>
-        <div className="modal modal-wide" onMouseDown={(e) => e.stopPropagation()}>
-          <div className="modal-body">{error ? <p className="error">{error}</p> : <p className="muted">Cargando…</p>}</div>
-        </div>
+      <div className="record-page">
+        <div className="record-main">{error ? <p className="error">{error}</p> : <p className="muted">Cargando…</p>}</div>
       </div>
     );
   }
@@ -232,34 +247,48 @@ export default function ClientRecord({ clientId, formState, refreshKey = 0, onCl
   const ro = locked; // los campos se ven pero no se tocan
 
   return (
-    <div className="modal-backdrop" onMouseDown={close}>
-      <div className="modal modal-wide client-record" onMouseDown={(e) => e.stopPropagation()}>
-        <div className="modal-head record-head">
-          <div>
-            <h2>{client.name}</h2>
-            <div className="record-sub">
-              <Badge value={client.status} />
-              {client.service && <span className="muted">{client.service}</span>}
-              {g && !g.past && <span className="muted">· {g.label} sem</span>}
-            </div>
-          </div>
-          <div className="record-head-actions">
-            <button
-              type="button"
-              className={'lock-btn' + (locked ? '' : ' is-open')}
-              onClick={() => setLocked((l) => !l)}
-              aria-pressed={!locked}
-              title={locked ? 'Ficha bloqueada. Pulsa para poder editarla' : 'Ficha desbloqueada. Pulsa para bloquearla'}
-            >
-              <span aria-hidden="true">{locked ? '🔒' : '🔓'}</span> {locked ? 'Bloqueada' : 'Editando'}
-            </button>
-            <button type="button" className="icon" onClick={close} aria-label="Cerrar">
-              ✕
-            </button>
+    <div className="record-page">
+      <header className="record-bar">
+        <div>
+          <h1>{client.name}</h1>
+          <div className="record-sub">
+            <Badge value={client.status} />
+            {client.service && <span className="muted">{client.service}</span>}
+            {g && !g.past && <span className="muted">· {g.label} sem</span>}
           </div>
         </div>
+        <div className="record-head-actions">
+          {saved && <span className="saved-note">{saved}</span>}
+          <button
+            type="button"
+            className={'lock-btn' + (locked ? '' : ' is-open')}
+            onClick={() => setLocked((l) => !l)}
+            aria-pressed={!locked}
+            title={locked ? 'Ficha bloqueada. Pulsa para poder editarla' : 'Ficha desbloqueada. Pulsa para bloquearla'}
+          >
+            <span aria-hidden="true">{locked ? '🔒' : '🔓'}</span> {locked ? 'Bloqueada: pulsa para editar' : 'Editando'}
+          </button>
+          <button type="button" onClick={close}>
+            Cerrar ficha
+          </button>
+        </div>
+      </header>
 
-        <div className="modal-body">
+      <div className="record-layout">
+        <nav className="record-nav" aria-label="Secciones de la ficha">
+          {[
+            ['sec-datos', 'Datos', true],
+            ['sec-seguimiento', 'Seguimiento', visits.length > 0],
+            ...RECORD_SECTIONS.map((sec) => [`sec-${sec.id}`, sec.label, sectionFilled(sections[sec.id]?.data)]),
+            ['sec-notas', 'Notas', notes.length > 0],
+          ].map(([id, label, filled]) => (
+            <a key={id} href={`#${id}`} className={filled ? 'is-filled' : ''}>
+              <span className="nav-dot" aria-hidden="true">{filled ? '●' : '○'}</span> {label}
+            </a>
+          ))}
+        </nav>
+
+        <div className="record-main">
           {/* Estado de un vistazo: lo hecho en verde, lo que falta, visible. */}
           <div className="status-chips">
             {formState && (
@@ -294,20 +323,15 @@ export default function ClientRecord({ clientId, formState, refreshKey = 0, onCl
           </div>
 
           {error && <p className="error">{error}</p>}
-          {saved && (
-            <p>
-              <span className="saved-note">{saved}</span>
-            </p>
-          )}
           {locked && (
             <p className="locked-note">
-              La ficha está bloqueada para que no se cambie nada por error. Puedes añadir notas; para editar datos,
-              visitas o pesos, pulsa el candado.
+              La ficha está bloqueada para que no se cambie nada por error. Puedes añadir notas; para rellenar o
+              editar datos y secciones, pulsa el candado de arriba.
             </p>
           )}
 
           {/* ---- datos ---- */}
-          <section className="record-section">
+          <section className="record-section" id="sec-datos">
             <h3>Datos</h3>
             <div className="form-grid">
               <Field label="Nombre">
@@ -379,7 +403,7 @@ export default function ClientRecord({ clientId, formState, refreshKey = 0, onCl
           </section>
 
           {/* ---- bebé y visitas ---- */}
-          <section className="record-section">
+          <section className="record-section" id="sec-percentil">
             <h3>Bebé y percentil de peso</h3>
             <div className="form-grid">
               <Field label="Sexo del bebé" help="La OMS publica tablas distintas para niñas y niños, así que el percentil cambia según el sexo.">
@@ -413,7 +437,7 @@ export default function ClientRecord({ clientId, formState, refreshKey = 0, onCl
             <p className="muted small">Es una ayuda visual para la consulta, no un diagnóstico.</p>
           </section>
 
-          <section className="record-section">
+          <section className="record-section" id="sec-seguimiento">
             <div className="record-section-head">
               <h3>Seguimiento: visitas, peso y percentil</h3>
               {!ro && !newVisit && (
@@ -570,8 +594,23 @@ export default function ClientRecord({ clientId, formState, refreshKey = 0, onCl
             )}
           </section>
 
+          {RECORD_SECTIONS.map((def) => (
+            <SectionCard
+              key={def.id}
+              def={def}
+              saved={sections[def.id]}
+              locked={ro}
+              onDirty={markDirty}
+              onSave={async (id, data) => {
+                const r = await api.saveClientSection(clientId, id, data);
+                setSections((all) => ({ ...all, [id]: r }));
+                flash('Sección guardada.');
+              }}
+            />
+          ))}
+
           {/* ---- notas ---- */}
-          <section className="record-section">
+          <section className="record-section" id="sec-notas">
             <h3>Notas</h3>
             <div className="note-add">
               <textarea
@@ -629,13 +668,95 @@ export default function ClientRecord({ clientId, formState, refreshKey = 0, onCl
             )}
           </section>
         </div>
-
-        <div className="modal-foot">
-          <button type="button" onClick={close}>
-            Cerrar ficha
-          </button>
-        </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * Una sección de la ficha: sus campos, su propio "Guardar" y cuándo se tocó
+ * por última vez. Se puede rellenar hoy una y dentro de un mes otra.
+ */
+function SectionCard({ def, saved, locked, onSave, onDirty }) {
+  const initial = saved?.data ?? {};
+  const [draft, setDraft] = useState(initial);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  // Si llega una versión guardada nueva, el borrador la sigue.
+  const savedKey = JSON.stringify(initial);
+  const isDirty = def.fields.some((f) => (draft[f.id] ?? '') !== (initial[f.id] ?? ''));
+  useEffect(() => {
+    setDraft(JSON.parse(savedKey));
+  }, [savedKey]);
+  useEffect(() => {
+    onDirty(def.id, isDirty);
+    return () => onDirty(def.id, false);
+  }, [isDirty, def.id, onDirty]);
+
+  async function save() {
+    setErr('');
+    setBusy(true);
+    try {
+      await onSave(def.id, draft);
+    } catch (e) {
+      setErr(e.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const filled = sectionFilled(initial);
+  return (
+    <section className="record-section record-card" id={`sec-${def.id}`}>
+      <div className="record-section-head">
+        <h3>
+          {def.label}
+          {filled && <span className="pct-badge section-done">Rellenada</span>}
+        </h3>
+        {saved?.updatedAt && (
+          <span className="muted small">
+            Última edición {fmtDate(saved.updatedAt)}
+            {saved.updatedBy ? ` · ${saved.updatedBy}` : ''}
+          </span>
+        )}
+      </div>
+      <p className="muted small">{def.hint}</p>
+      <div className="section-fields">
+        {def.fields.map((f) => (
+          <label key={f.id} className={'field' + (f.type === 'text' ? '' : ' wide')}>
+            <span>{f.label}</span>
+            {f.type === 'text' ? (
+              <input
+                value={draft[f.id] ?? ''}
+                placeholder={f.placeholder}
+                readOnly={locked}
+                onChange={(e) => setDraft({ ...draft, [f.id]: e.target.value })}
+              />
+            ) : (
+              <textarea
+                rows={locked ? 2 : 4}
+                value={draft[f.id] ?? ''}
+                placeholder={locked && !draft[f.id] ? 'Sin rellenar' : f.placeholder}
+                readOnly={locked}
+                onChange={(e) => setDraft({ ...draft, [f.id]: e.target.value })}
+              />
+            )}
+          </label>
+        ))}
+      </div>
+      {err && <p className="error">{err}</p>}
+      {!locked && (
+        <div className="record-actions">
+          <button type="button" className="primary" onClick={save} disabled={!isDirty || busy}>
+            {busy ? 'Guardando…' : isDirty ? 'Guardar sección' : 'Guardada'}
+          </button>
+          {isDirty && (
+            <button type="button" onClick={() => setDraft(initial)}>
+              Descartar
+            </button>
+          )}
+        </div>
+      )}
+    </section>
   );
 }

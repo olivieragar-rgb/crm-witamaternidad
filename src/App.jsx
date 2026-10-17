@@ -11,6 +11,7 @@ import Calendar from './views/Calendar.jsx';
 import Login from './views/Login.jsx';
 import Settings from './views/Settings.jsx';
 import Privacy from './views/Privacy.jsx';
+import ClientPage from './views/ClientPage.jsx';
 import PasswordModal from './components/PasswordModal.jsx';
 import { ConfigProvider, useConfig } from './config.jsx';
 import DayBriefing from './components/DayBriefing.jsx';
@@ -110,6 +111,16 @@ export default function App() {
           setSession(user);
         }}
       />
+    );
+  }
+
+  // La ficha de una clienta, en su propia ventana: /?ficha=<id>
+  const fichaId = Number(new URLSearchParams(window.location.search).get('ficha'));
+  if (Number.isInteger(fichaId) && fichaId > 0) {
+    return (
+      <ConfigProvider>
+        <ClientPage clientId={fichaId} />
+      </ConfigProvider>
     );
   }
 

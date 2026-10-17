@@ -207,6 +207,17 @@ const SCHEMA = `
   -- Firma manuscrita del consentimiento, hecha en pantalla. Va aparte de
   -- clients para no viajar con cada listado, y se borra al retirar el
   -- consentimiento, al anonimizar o al borrar la ficha.
+  -- Secciones de la ficha (salud, embarazo, lactancia...), una fila por sección
+  -- para poder rellenarlas por separado. data es un JSON de campo -> texto.
+  CREATE TABLE IF NOT EXISTS client_sections (
+    clientId INTEGER NOT NULL,
+    section TEXT NOT NULL,
+    data TEXT NOT NULL DEFAULT '{}',
+    updatedAt TEXT NOT NULL DEFAULT (datetime('now')),
+    updatedBy TEXT NOT NULL DEFAULT '',
+    PRIMARY KEY (clientId, section)
+  );
+
   -- Notas de la ficha de una clienta: un historial, no un campo de texto.
   CREATE TABLE IF NOT EXISTS client_notes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

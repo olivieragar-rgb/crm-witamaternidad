@@ -2667,3 +2667,109 @@ a.export {
 .trend-line {
   margin: 4px 0 10px;
 }
+
+/* ---- ficha en su propia ventana ---- */
+.record-page {
+  min-height: 100vh;
+  background: var(--bg, #fbf8f3);
+}
+.record-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 28px;
+  background: var(--card, #fff);
+  border-bottom: 1px solid var(--border, #e6dfd5);
+  box-shadow: 0 2px 8px rgba(46, 42, 37, 0.05);
+}
+.record-bar h1 {
+  margin: 0 0 4px;
+  font-size: 24px;
+}
+.record-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 28px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 24px 28px 80px;
+}
+.record-nav {
+  position: sticky;
+  top: 96px;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.record-nav a {
+  display: block;
+  padding: 7px 12px;
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 14px;
+}
+.record-nav a:hover {
+  background: var(--bg-warm);
+}
+.record-nav a.is-filled {
+  color: var(--green-dark);
+  font-weight: 600;
+}
+.nav-dot {
+  display: inline-block;
+  width: 1.2em;
+}
+.record-main {
+  min-width: 0;
+}
+.record-card {
+  background: var(--card, #fff);
+  border: 1px solid var(--border, #e6dfd5);
+  border-radius: var(--radius-lg);
+  padding: 18px 22px;
+}
+.record-main .record-section {
+  scroll-margin-top: 100px;
+}
+.section-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 18px;
+}
+.section-fields .field.wide {
+  grid-column: 1 / -1;
+}
+.section-fields textarea {
+  width: 100%;
+  min-height: 80px;
+  resize: vertical;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.section-done {
+  margin-left: 10px;
+}
+@media (max-width: 860px) {
+  .record-layout {
+    grid-template-columns: 1fr;
+    padding: 16px;
+  }
+  .record-nav {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+  .section-fields {
+    grid-template-columns: 1fr;
+  }
+  .record-bar {
+    padding: 12px 16px;
+    flex-wrap: wrap;
+  }
+}

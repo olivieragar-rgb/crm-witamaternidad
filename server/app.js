@@ -259,6 +259,7 @@ app.use(
       await run('DELETE FROM client_forms WHERE clientId = ?', [id]);
       await run('DELETE FROM consent_signatures WHERE clientId = ?', [id]);
       await run('DELETE FROM client_notes WHERE clientId = ?', [id]);
+      await run('DELETE FROM client_sections WHERE clientId = ?', [id]);
     },
   }),
 );

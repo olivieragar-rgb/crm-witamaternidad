@@ -113,3 +113,30 @@ test('un gasto guarda su forma de pago y se puede buscar por ella', async () => 
   const found = (await a.get('/api/expenses?q=Transferencia')).data.rows;
   assert.ok(found.some((r) => r.id === e.id));
 });
+
+test('secciones de la ficha: se guardan por separado, se validan y salen en el export', async () => {
+  const id = (await a.post('/api/clients', { name: 'Elena Mora' })).data.id;
+  assert.deepEqual((await a.get(`/api/clients/${id}/sections`)).data, {});
+  assert.equal((await a.put(`/api/clients/${id}/sections/inventada`, { data: { x: 'y' } })).status, 404);
+
+  const s1 = await a.put(`/api/clients/${id}/sections/salud`, { data: { alergias: ' Penicilina ', campoFalso: 'no' } });
+  assert.equal(s1.status, 200);
+  assert.deepEqual(s1.data.data, { alergias: 'Penicilina' }, 'solo campos conocidos y recortados');
+  assert.equal(s1.data.updatedBy, 'Admin');
+  await a.put(`/api/clients/${id}/sections/lactancia`, { data: { tipo: 'Mixta' } });
+
+  const all = (await a.get(`/api/clients/${id}/sections`)).data;
+  assert.deepEqual(Object.keys(all).sort(), ['lactancia', 'salud']);
+
+  const exp = (await a.get(`/api/clients/${id}/export`)).data;
+  assert.ok(exp.secciones.some((s) => s.seccion === 'Salud y antecedentes' && s.respuestas.Alergias === 'Penicilina'));
+
+  // Vaciar una sección la quita.
+  await a.put(`/api/clients/${id}/sections/salud`, { data: {} });
+  assert.deepEqual(Object.keys((await a.get(`/api/clients/${id}/sections`)).data), ['lactancia']);
+
+  // Anonimizar se las lleva.
+  await a.post(`/api/clients/${id}/anonymize`, {});
+  assert.deepEqual((await a.get(`/api/clients/${id}/sections`)).data, {});
+  assert.equal((await a.put(`/api/clients/${id}/sections/salud`, { data: { alergias: 'x' } })).status, 409);
+});
