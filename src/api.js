@@ -45,7 +45,10 @@ export const api = {
   create: (resource, body) => req('POST', `/api/${resource}`, body),
   update: (resource, id, body) => req('PUT', `/api/${resource}/${id}`, body),
   remove: (resource, id) => req('DELETE', `/api/${resource}/${id}`),
-  dashboard: () => req('GET', '/api/dashboard'),
+  dashboard: (limit) => req('GET', `/api/dashboard${limit ? `?limit=${limit}` : ''}`),
+  // Como prefiere ver el CRM cada usuaria (hoy, su pantalla de Inicio).
+  prefs: (key) => req('GET', `/api/prefs/${key}`),
+  savePrefs: (key, body) => req('PUT', `/api/prefs/${key}`, body),
 
   setupStatus: () => req('GET', '/api/setup-status', undefined, { expireOn401: false }),
   setup: (body) => req('POST', '/api/auth/setup', body, { expireOn401: false }),

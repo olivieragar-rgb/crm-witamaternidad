@@ -9,6 +9,8 @@ import { settingsRouter, getSetting } from './settings.js';
 import { catalogsRouter, getCatalogs } from './catalogs.js';
 import { privacyRouter, auditRouter } from './privacy.js';
 import { consentFormsRouter, consentRouter } from './consent-forms.js';
+import { prefsRouter } from './prefs.js';
+import { LIST_SIZES } from '../src/lib/dashboard-layout.js';
 import { questionnairesRouter } from './questionnaires.js';
 import { calendarRouter } from './calendar.js';
 import { expensesRouter, taxesRouter } from './expenses.js';
@@ -203,6 +205,7 @@ app.use('/api/clients', questionnairesRouter);
 // Registrar que firmó o retiró el consentimiento: se audita sola, con su nombre.
 app.use('/api/clients', consentRouter);
 app.use('/api/consent-forms', consentFormsRouter);
+app.use('/api/prefs', prefsRouter);
 app.use('/api/audit', auditRouter);
 app.use('/api/expenses', expensesRouter);
 app.use('/api/taxes', taxesRouter);
@@ -457,9 +460,12 @@ app.post('/api/invoices/:id/email', async (req, res, next) => {
 
 app.get('/api/dashboard', async (req, res, next) => {
   try {
+    // Cuantos elementos enseñan las listas: lo elige cada usuaria (3, 5 o 10).
+    const limit = LIST_SIZES.includes(Number(req.query.limit)) ? Number(req.query.limit) : 5;
     const activeClients = (await get("SELECT COUNT(*) AS n FROM clients WHERE status = 'Activa'")).n;
     const upcomingBirths = await all(
-      "SELECT id, name, dueDate FROM clients WHERE dueDate >= date('now') ORDER BY dueDate LIMIT 5",
+      "SELECT id, name, dueDate FROM clients WHERE dueDate >= date('now') ORDER BY dueDate LIMIT ?",
+      [limit],
     );
     const upcomingAppointments = await all(
       `SELECT a.id, a.date, a.status, c.name AS clientName, s.name AS serviceName
@@ -467,7 +473,8 @@ app.get('/api/dashboard', async (req, res, next) => {
        LEFT JOIN clients c ON c.id = a.clientId
        LEFT JOIN services s ON s.id = a.serviceId
        WHERE a.date >= datetime('now') AND a.status = 'Programada'
-       ORDER BY a.date LIMIT 5`,
+       ORDER BY a.date LIMIT ?`,
+      [limit],
     );
 
     // Una sola consulta agregada; antes se recorrian las facturas del mes una

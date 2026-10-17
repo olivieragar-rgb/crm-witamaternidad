@@ -812,7 +812,8 @@ td.empty {
 /* ---- dashboard ---- */
 .stats {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  /* Las que haya, repartidas: ahora se pueden ocultar cifras y no siempre son cuatro. */
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 14px;
   margin-bottom: 28px;
 }
@@ -863,7 +864,7 @@ td.empty {
 
 .panels {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
   align-items: start;
 }
@@ -1818,6 +1819,12 @@ a.btn:hover {
   margin-bottom: 22px;
 }
 
+/* Dentro de la rejilla de paneles ocupa todo el ancho, y la separación la da la rejilla. */
+.panels > .pending-panel {
+  grid-column: 1 / -1;
+  margin-bottom: 0;
+}
+
 .pending-title {
   font-family: var(--font-body);
   font-size: 12px;
@@ -2388,4 +2395,76 @@ a.export {
 /* En la cabecera de las líneas de factura el "?" va pegado a su título, no debajo. */
 .items-head > span {
   white-space: nowrap;
+}
+
+/* ---- Inicio personalizable ---- */
+.panels.one-col {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.stats.compact .stat {
+  padding: 12px 16px;
+  gap: 2px;
+}
+
+.stats.compact .stat-num {
+  font-size: 22px;
+}
+
+.home-empty {
+  padding: 32px 0;
+}
+
+.cust-group {
+  margin: 14px 0 0;
+  padding: 10px 14px 6px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+}
+
+.cust-group legend {
+  padding: 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.cust-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.cust-row:last-child {
+  border-bottom: 0;
+}
+
+.cust-move {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.cust-options {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 10px 16px;
+  align-items: center;
+  padding-bottom: 8px;
+}
+
+.cust-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-soft);
+}
+
+.cust-choice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
 }

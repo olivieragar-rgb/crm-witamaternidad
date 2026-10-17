@@ -319,6 +319,7 @@ usersRouter.delete('/:id', async (req, res, next) => {
       return res.status(409).json({ error: 'Tiene que quedar al menos una administradora activa' });
     }
     await run('DELETE FROM sessions WHERE userId = ?', [id]);
+    await run('DELETE FROM user_prefs WHERE userId = ?', [id]);
     await run('DELETE FROM users WHERE id = ?', [id]);
     await audit(req, { action: 'user_delete', entity: 'users', entityId: id, detail: user.email });
     res.status(204).end();

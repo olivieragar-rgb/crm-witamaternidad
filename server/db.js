@@ -181,6 +181,12 @@ const SCHEMA = `
     active INTEGER NOT NULL DEFAULT 1
   );
   CREATE INDEX IF NOT EXISTS idx_catalogs_type ON catalogs (type, sortOrder);
+  -- Como prefiere ver el CRM cada usuaria (hoy, su pantalla de Inicio).
+  CREATE TABLE IF NOT EXISTS user_prefs (
+    userId INTEGER NOT NULL, key TEXT NOT NULL, value TEXT NOT NULL,
+    updatedAt TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (userId, key)
+  );
   -- Cuestionario de alta de la clienta. Las respuestas van en JSON porque los
   -- dos cuestionarios no comparten ni una pregunta y las preguntas van a
   -- cambiar: en columnas seria una migracion por pregunta.
