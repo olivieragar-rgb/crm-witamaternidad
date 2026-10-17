@@ -267,6 +267,8 @@ const COLUMNS = [
   ['clients', 'babyBirthDate', "TEXT NOT NULL DEFAULT ''"],
   // Peso del bebé (kg) medido en esa visita; 0 = no se pesó.
   ['appointments', 'babyWeightKg', 'REAL NOT NULL DEFAULT 0'],
+  // Cómo se pagó un gasto (Tarjeta, Transferencia...). Mismo catálogo que las facturas.
+  ['expenses', 'paymentMethod', "TEXT NOT NULL DEFAULT ''"],
 
   // Fecha del ultimo recordatorio enviado, para no repetirlo sin querer.
   ['invoices', 'remindedAt', "TEXT NOT NULL DEFAULT ''"],

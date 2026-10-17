@@ -19,6 +19,7 @@ const EMPTY = () => ({
   supplier: '',
   supplierTaxId: '',
   category: '',
+  paymentMethod: '',
   base: 0,
   vatRate: 21,
   deductible: true,
@@ -88,6 +89,7 @@ export default function Expenses() {
       Proveedor: r.supplier,
       NIF: r.supplierTaxId,
       Categoría: r.category,
+      'Forma de pago': r.paymentMethod,
       Base: r.amounts.base,
       'IVA %': r.vatRate,
       IVA: r.amounts.vat,
@@ -137,6 +139,7 @@ export default function Expenses() {
             <th>Fecha</th>
             <th>Concepto</th>
             <th>Categoría</th>
+            <th>Forma de pago</th>
             <th className="num">Base</th>
             <th className="num">IVA</th>
             <th className="num">Total</th>
@@ -155,6 +158,7 @@ export default function Expenses() {
                 {r.category || '—'}
                 {!r.deductible && <div className="muted">No deducible</div>}
               </td>
+              <td className="muted">{r.paymentMethod || '—'}</td>
               <td className="num">{eur(r.amounts.base)}</td>
               <td className="num">{eur(r.amounts.vat)}</td>
               <td className="num">{eur(r.amounts.total)}</td>
@@ -170,12 +174,12 @@ export default function Expenses() {
               </td>
             </tr>
           ))}
-          {data.rows.length === 0 && <EmptyRow colSpan={7} />}
+          {data.rows.length === 0 && <EmptyRow colSpan={8} />}
         </tbody>
         {data.rows.length > 0 && (
           <tfoot>
             <tr>
-              <td colSpan={3} className="muted">
+              <td colSpan={4} className="muted">
                 {data.rows.length} gastos
               </td>
               <td className="num">
@@ -220,6 +224,14 @@ export default function Expenses() {
                 <option value="">—</option>
                 {options(config.catalogs.expenseCategory, form.category).map((c) => (
                   <option key={c}>{c}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Forma de pago">
+              <select value={form.paymentMethod} onChange={set('paymentMethod')}>
+                <option value="">—</option>
+                {options(config.catalogs.paymentMethod, form.paymentMethod).map((m) => (
+                  <option key={m}>{m}</option>
                 ))}
               </select>
             </Field>

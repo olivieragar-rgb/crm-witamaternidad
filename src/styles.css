@@ -2648,3 +2648,22 @@ a.export {
   align-items: center;
   gap: 6px;
 }
+
+.followup-table td {
+  vertical-align: top;
+}
+.session-notes {
+  min-width: 220px;
+}
+.session-notes textarea {
+  width: 100%;
+}
+.delta-up {
+  color: var(--green-dark);
+}
+.delta-down {
+  color: var(--terracotta-dark);
+}
+.trend-line {
+  margin: 4px 0 10px;
+}

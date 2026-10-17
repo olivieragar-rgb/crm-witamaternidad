@@ -151,6 +151,14 @@ export default function ClientRecord({ clientId, formState, refreshKey = 0, onCl
       flash('Peso guardado.');
     });
 
+  const saveVisitNotes = (visit, value) =>
+    guard(async () => {
+      if (value.trim() === (visit.notes || '').trim()) return;
+      await api.update('appointments', visit.id, { notes: value.trim() });
+      await loadVisits();
+      flash('Anotación guardada.');
+    });
+
   const removeVisit = (visit) =>
     guard(async () => {
       if (!confirm(`¿Borrar la visita del ${fmtDate(visit.date)}?`)) return;
@@ -195,6 +203,24 @@ export default function ClientRecord({ clientId, formState, refreshKey = 0, onCl
   const readings = chronological
     .map((v) => ({ v, p: percentileAt(client, v.date, Number(v.babyWeightKg)) }))
     .filter((r) => r.p);
+  // Visita a visita: cuánto ha cambiado el peso y el percentil respecto a la
+  // última vez que se pesó (el seguimiento).
+  let prev = null;
+  const followup = chronological.map((v) => {
+    const w = Number(v.babyWeightKg) || 0;
+    const p = percentileAt(client, v.date, w);
+    const row = { v, w, p, dW: null, dDays: null, dP: null };
+    if (w > 0) {
+      if (prev) {
+        row.dW = Math.round((w - prev.w) * 1000);
+        row.dDays = daysBetween(prev.v.date, v.date);
+        if (p && prev.p) row.dP = Math.round(p.percentile) - Math.round(prev.p.percentile);
+      }
+      prev = row;
+    }
+    return row;
+  });
+  const trend = followup.filter((r) => r.p).map((r) => ({ id: r.v.id, p: r.p }));
   const points = readings.map((r) => ({ day: r.p.day, weight: Number(r.v.babyWeightKg) }));
   const lastReading = readings[readings.length - 1];
   const g = gestWeeks(client.dueDate);
@@ -389,7 +415,7 @@ export default function ClientRecord({ clientId, formState, refreshKey = 0, onCl
 
           <section className="record-section">
             <div className="record-section-head">
-              <h3>Historial de visitas</h3>
+              <h3>Seguimiento: visitas, peso y percentil</h3>
               {!ro && !newVisit && (
                 <button type="button" onClick={() => setNewVisit({ date: nowLocal(), serviceId: '', weight: '', notes: '' })}>
                   + Añadir visita
@@ -439,31 +465,38 @@ export default function ClientRecord({ clientId, formState, refreshKey = 0, onCl
             {visits.length === 0 ? (
               <p className="muted">Todavía no hay visitas. Aparecerán aquí las citas de esta clienta.</p>
             ) : (
-              <table className="grid-table compact">
-                <thead>
-                  <tr>
-                    <th>Fecha</th>
-                    <th>Servicio</th>
-                    <th>Estado</th>
-                    <th>Peso bebé</th>
-                    <th>Percentil</th>
-                    <th>Notas</th>
-                    {!ro && <th></th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {visits.map((v) => {
-                    const w = Number(v.babyWeightKg) || 0;
-                    const p = percentileAt(client, v.date, w);
-                    return (
+              <>
+                {trend.length > 1 && (
+                  <p className="trend-line">
+                    <span className="muted small">Evolución del percentil:</span>{' '}
+                    {trend.map((t, i) => (
+                      <span key={t.id}>
+                        {i > 0 && ' → '}
+                        <span className={`pct-badge tone-${t.p.tone}`}>P{Math.round(t.p.percentile)}</span>
+                      </span>
+                    ))}
+                  </p>
+                )}
+                <table className="grid-table compact followup-table">
+                  <thead>
+                    <tr>
+                      <th>Fecha</th>
+                      <th>Peso bebé</th>
+                      <th>Cambio</th>
+                      <th>Percentil</th>
+                      <th>Anotaciones de la sesión</th>
+                      {!ro && <th></th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[...followup].reverse().map(({ v, w, p, dW, dDays, dP }) => (
                       <tr key={v.id}>
                         <td>
                           <strong>{fmtDate(v.date)}</strong>
-                          {p && <div className="muted small">{formatAge(p.day)}</div>}
-                        </td>
-                        <td className="muted">{v.serviceName || '—'}</td>
-                        <td>
-                          <Badge value={v.status} />
+                          <div className="muted small">
+                            {v.serviceName || v.status}
+                            {p ? ` · ${formatAge(p.day)}` : ''}
+                          </div>
                         </td>
                         <td>
                           {ro ? (
@@ -479,16 +512,49 @@ export default function ClientRecord({ clientId, formState, refreshKey = 0, onCl
                             />
                           )}
                         </td>
+                        <td className="muted">
+                          {dW === null ? (
+                            '—'
+                          ) : (
+                            <>
+                              <strong className={dW < 0 ? 'delta-down' : 'delta-up'}>
+                                {dW > 0 ? '+' : ''}
+                                {dW} g
+                              </strong>
+                              <div className="small">en {dDays} {dDays === 1 ? 'día' : 'días'}</div>
+                            </>
+                          )}
+                        </td>
                         <td>
                           {p ? (
-                            <span className={`pct-badge tone-${p.tone}`} title={p.label}>
-                              P{Math.round(p.percentile)}
-                            </span>
+                            <>
+                              <span className={`pct-badge tone-${p.tone}`} title={p.label}>
+                                P{Math.round(p.percentile)}
+                              </span>
+                              {dP !== null && dP !== 0 && (
+                                <span className={'small ' + (dP < 0 ? 'delta-down' : 'delta-up')}>
+                                  {' '}
+                                  {dP > 0 ? '▲' : '▼'} {Math.abs(dP)}
+                                </span>
+                              )}
+                            </>
                           ) : (
                             <span className="muted">—</span>
                           )}
                         </td>
-                        <td className="muted">{v.notes}</td>
+                        <td className="session-notes">
+                          {ro ? (
+                            v.notes ? <p className="note-text">{v.notes}</p> : <span className="muted">—</span>
+                          ) : (
+                            <textarea
+                              rows={2}
+                              defaultValue={v.notes}
+                              placeholder="Qué se trabajó en la sesión…"
+                              onBlur={(e) => saveVisitNotes(v, e.target.value)}
+                              aria-label={`Anotaciones del ${fmtDate(v.date)}`}
+                            />
+                          )}
+                        </td>
                         {!ro && (
                           <td className="row-actions">
                             <button type="button" className="danger" onClick={() => removeVisit(v)}>
@@ -497,10 +563,10 @@ export default function ClientRecord({ clientId, formState, refreshKey = 0, onCl
                           </td>
                         )}
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                    ))}
+                  </tbody>
+                </table>
+              </>
             )}
           </section>
 

@@ -69,6 +69,7 @@ function draw(doc, e, issuer) {
   row('NIF del proveedor', e.supplierTaxId);
   row('Concepto', e.description);
   row('Categoría', e.category);
+  row('Forma de pago', e.paymentMethod);
   row('Fecha del gasto', fmtDate(e.date));
   row('Deducible', e.deductible ? 'Sí' : 'No');
 

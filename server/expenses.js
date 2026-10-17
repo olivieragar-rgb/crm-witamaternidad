@@ -41,7 +41,7 @@ export function expenseAmounts(e) {
   };
 }
 
-const FIELDS = ['date', 'description', 'supplier', 'supplierTaxId', 'category', 'base', 'vatRate', 'deductible', 'notes'];
+const FIELDS = ['date', 'description', 'supplier', 'supplierTaxId', 'category', 'paymentMethod', 'base', 'vatRate', 'deductible', 'notes'];
 
 const normalize = (f, v) => {
   if (f === 'base' || f === 'vatRate') return num(v);
@@ -73,7 +73,7 @@ expensesRouter.get('/', async (req, res, next) => {
     for (const r of rows) r.amounts = expenseAmounts(r);
 
     const q = typeof req.query.q === 'string' ? req.query.q : '';
-    const found = searchItems(rows, q, (e) => `${e.description} ${e.supplier} ${e.category} ${e.notes}`);
+    const found = searchItems(rows, q, (e) => `${e.description} ${e.supplier} ${e.category} ${e.paymentMethod} ${e.notes}`);
     const years = (
       await all("SELECT DISTINCT substr(date, 1, 4) AS y FROM expenses WHERE date <> '' ORDER BY y DESC")
     ).map((r) => r.y);

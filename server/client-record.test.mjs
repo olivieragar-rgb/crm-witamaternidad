@@ -104,3 +104,12 @@ test('un gasto se descarga como PDF', async () => {
   const nf = await fetch(`${srv.base}/api/expenses/99999/pdf`, { headers: { cookie: a.cookie() } });
   assert.equal(nf.status, 404);
 });
+
+test('un gasto guarda su forma de pago y se puede buscar por ella', async () => {
+  const e = (await a.post('/api/expenses', { description: 'Cuota web', base: 20, vatRate: 21, paymentMethod: 'Tarjeta' })).data;
+  assert.equal(e.paymentMethod, 'Tarjeta');
+  const upd = (await a.put(`/api/expenses/${e.id}`, { paymentMethod: 'Transferencia' })).data;
+  assert.equal(upd.paymentMethod, 'Transferencia');
+  const found = (await a.get('/api/expenses?q=Transferencia')).data.rows;
+  assert.ok(found.some((r) => r.id === e.id));
+});

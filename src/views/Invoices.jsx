@@ -305,6 +305,7 @@ export default function Invoices({ initialFilter }) {
       Vencimiento: i.dueDate || '',
       Cobrada: i.paidAt || '',
       Clienta: i.clientName || '',
+      'Forma de pago': i.paymentMethod || '',
       Estado: i.status,
       Base: i.totals?.base ?? 0,
       IVA: i.totals?.vat ?? 0,
@@ -459,6 +460,7 @@ export default function Invoices({ initialFilter }) {
             <th>Nº</th>
             <th>Fecha</th>
             <th>Clienta</th>
+            <th>Forma de pago</th>
             <th>Estado</th>
             <th className="num">Total</th>
             <th></th>
@@ -478,6 +480,7 @@ export default function Invoices({ initialFilter }) {
               <td>{i.number ? <strong>{i.number}</strong> : <span className="muted">Sin emitir</span>}</td>
               <td className="muted">{fmtDate(i.date)}</td>
               <td>{i.clientName || <span className="muted">—</span>}</td>
+              <td className="muted">{i.paymentMethod || '—'}</td>
               <td>
                 <Badge value={i.status} />
               </td>
@@ -507,7 +510,7 @@ export default function Invoices({ initialFilter }) {
           ))}
           {rows.length === 0 && (
             <EmptyRow
-              colSpan={7}
+              colSpan={8}
               text={year && !data.years.includes(year) ? `Aún no hay facturas de ${year}.` : 'Sin resultados'}
             />
           )}
