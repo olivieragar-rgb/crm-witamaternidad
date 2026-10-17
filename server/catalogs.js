@@ -24,7 +24,7 @@ export const TYPES = {
     defaults: ['Hipnoparto / Preparación al parto', 'Lactancia', 'Consulta online', 'Otro'],
   },
   mode: { label: 'Modalidades', defaults: ['Presencial (Granada)', 'Online'] },
-  clientStatus: { label: 'Estados de clienta', defaults: ['Nuevo contacto', 'Activa', 'Finalizada'] },
+  clientStatus: { label: 'Estados de clienta', defaults: ['Activa', 'Finalizada'] },
   appointmentStatus: { label: 'Estados de cita', defaults: ['Programada', 'Realizada', 'Cancelada'] },
   expenseCategory: {
     label: 'Categorias de gasto',

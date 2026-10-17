@@ -6,7 +6,7 @@ import { invoiceXlsxBase64 } from './invoice-xlsx.js';
 import { invoicePdf, invoicesPdf } from './invoice-pdf.js';
 import { invoicesRouter, invoiceWithItems, lineAmount } from './invoices.js';
 import { settingsRouter, getSetting } from './settings.js';
-import { catalogsRouter } from './catalogs.js';
+import { catalogsRouter, getCatalogs } from './catalogs.js';
 import { privacyRouter, auditRouter } from './privacy.js';
 import { consentFormsRouter, consentRouter } from './consent-forms.js';
 import { questionnairesRouter } from './questionnaires.js';
@@ -93,7 +93,7 @@ function normalize(field, value) {
 }
 // ---- generic CRUD --------------------------------------------------------
 
-function crud({ table, fields, required = [], searchText, orderBy = 'id DESC', beforeDelete, afterDelete }) {
+function crud({ table, fields, required = [], searchText, orderBy = 'id DESC', beforeDelete, afterDelete, defaults }) {
   const router = express.Router();
 
   router.get('/', async (req, res, next) => {
@@ -129,10 +129,16 @@ function crud({ table, fields, required = [], searchText, orderBy = 'id DESC', b
       // pisaba ese valor por defecto, y una cita creada sin estado se quedaba
       // sin estado en vez de quedar "Programada".
       const present = fields.filter((f) => body[f] !== undefined && body[f] !== null && body[f] !== '');
-      const info = present.length
+      // Valores por defecto que la tabla no puede dar (porque salen de los
+      // ajustes, o porque en una base antigua el DEFAULT de la columna es otro).
+      const calc = defaults ? await defaults() : {};
+      const values = Object.fromEntries(present.map((f) => [f, normalize(f, body[f])]));
+      for (const [f, v] of Object.entries(calc)) if (!(f in values)) values[f] = v;
+      const cols = Object.keys(values);
+      const info = cols.length
         ? await run(
-            `INSERT INTO ${table} (${present.join(', ')}) VALUES (${present.map(() => '?').join(', ')})`,
-            present.map((f) => normalize(f, body[f])),
+            `INSERT INTO ${table} (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`,
+            cols.map((f) => values[f]),
           )
         : await run(`INSERT INTO ${table} DEFAULT VALUES`);
       await audit(req, { action: 'create', entity: table, entityId: info.lastInsertRowid });
@@ -226,6 +232,12 @@ app.use(
     orderBy: 'name',
     searchText: (c) =>
       `${c.name} ${c.email} ${c.phone} ${c.service} ${c.mode} ${c.status} ${c.notes} ${c.taxId} ${c.city}`,
+    // El estado de una clienta nueva es el primero de la lista de Ajustes (hoy
+    // "Activa"), no el DEFAULT de la columna: en bases antiguas era otro.
+    defaults: async () => {
+      const { clientStatus } = await getCatalogs();
+      return { status: clientStatus.find((o) => o.active)?.value ?? 'Activa' };
+    },
     // Las facturas hay que conservarlas, asi que una clienta con facturas no
     // se borra. El bloque de RGPD lo resuelve anonimizando la ficha.
     beforeDelete: async (id) => {
@@ -446,7 +458,6 @@ app.post('/api/invoices/:id/email', async (req, res, next) => {
 app.get('/api/dashboard', async (req, res, next) => {
   try {
     const activeClients = (await get("SELECT COUNT(*) AS n FROM clients WHERE status = 'Activa'")).n;
-    const newClients = (await get("SELECT COUNT(*) AS n FROM clients WHERE status = 'Nuevo contacto'")).n;
     const upcomingBirths = await all(
       "SELECT id, name, dueDate FROM clients WHERE dueDate >= date('now') ORDER BY dueDate LIMIT 5",
     );
@@ -488,7 +499,6 @@ app.get('/api/dashboard', async (req, res, next) => {
 
     res.json({
       activeClients,
-      newClients,
       pendingInvoices,
       draftInvoices,
       overdueInvoices,

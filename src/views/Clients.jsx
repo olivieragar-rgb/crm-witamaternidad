@@ -10,7 +10,7 @@ import { useConfig, options } from '../config.jsx';
 
 const EMPTY = {
   name: '', email: '', phone: '', service: '', mode: '', dueDate: '',
-  status: 'Nuevo contacto', notes: '',
+  status: 'Activa', notes: '',
   taxId: '', address: '', postalCode: '', city: '', province: '', country: 'España',
   consentAt: '', consentChannel: '', consentVersion: '',
 };
@@ -123,30 +123,6 @@ export default function Clients({ initialFilter }) {
     }
   }
 
-  // Derecho de supresión. Se ejerce cuando la clienta lo pide, no solo cuando
-  // vence el plazo de conservación, así que tiene que estar aquí y no solo en
-  // la vista de Privacidad.
-  async function anonymize(c) {
-    if (
-      !confirm(
-        `Vas a anonimizar la ficha de ${c.name}.\n\n` +
-          'Se borran su nombre, contacto, FPP y notas, y también las notas de sus citas.\n' +
-          'Sus facturas se quedan tal cual: la ley obliga a guardarlas.\n\n' +
-          'No hay vuelta atrás. ¿Seguimos?',
-      )
-    ) {
-      return;
-    }
-    const reason = prompt('Motivo (queda en el registro):', 'La clienta ejerce su derecho de supresión');
-    if (reason === null) return;
-    try {
-      await api.anonymize(c.id, { reason });
-      load();
-    } catch (e) {
-      alert(e.message);
-    }
-  }
-
   return (
     <section>
       <Toolbar title="Clientas" query={query} setQuery={setQuery} onNew={newRow} newLabel="Nueva clienta" />
@@ -229,17 +205,9 @@ export default function Clients({ initialFilter }) {
                     Anonimizada
                   </button>
                 ) : (
-                  <>
-                    {/* Anonimizar es el derecho de supresión: conserva las
-                        facturas. Borrar solo funciona si no tiene ninguna, y
-                        es para una ficha creada por error. */}
-                    <button className="danger" onClick={() => anonymize(c)} title="Borrar sus datos personales conservando las facturas (derecho de supresión)">
-                      Anonimizar
-                    </button>
-                    <button className="danger" onClick={() => remove(c.id)} title="Solo si no tiene facturas">
-                      Borrar
-                    </button>
-                  </>
+                  <button className="danger" onClick={() => remove(c.id)} title="Solo si no tiene facturas">
+                    Borrar
+                  </button>
                 )}
               </td>
             </tr>

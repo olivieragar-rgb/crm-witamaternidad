@@ -39,10 +39,6 @@ export default function Dashboard({ go }) {
           <span className="stat-num">{data.activeClients}</span>
           <span className="stat-label">Clientas activas</span>
         </button>
-        <button className="stat" style={{ '--i': 1 }} onClick={() => go('clients', { q: 'Nuevo contacto' })}>
-          <span className="stat-num">{data.newClients}</span>
-          <span className="stat-label">Nuevos contactos</span>
-        </button>
         <button className="stat" style={{ '--i': 2 }} onClick={() => go('invoices', { status: 'pendientes' })}>
           <span className="stat-num">{data.pendingInvoices}</span>
           <span className="stat-label">Facturas pendientes</span>

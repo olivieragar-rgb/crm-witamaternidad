@@ -217,9 +217,10 @@ salud, categoria especial del Art. 9 del RGPD**. Lo que hace el sistema:
   hay que revisar con la asesoría.
 - **Derecho de acceso y portabilidad**: el boton "Datos" descarga todo lo que
   el sistema guarda de esa clienta, con sus citas y sus facturas.
-- **Derecho de supresion**: "Anonimizar" vacia nombre, contacto, FPP, notas y
-  datos fiscales de la ficha, y tambien las notas de sus citas. Las facturas
-  se conservan, porque la ley obliga: cada una guarda su propia copia de los
+- **Derecho de supresion**: anonimizar una ficha vacia nombre, contacto, FPP,
+  notas y datos fiscales, y tambien las notas de sus citas. Se hace desde
+  Privacidad · Conservacion; en Clientas ya no hay boton. Las facturas se
+  conservan, porque la ley obliga: cada una guarda su propia copia de los
   datos fiscales, asi que sigue siendo valida con la ficha ya vaciada.
 - **Registro de accesos** (Privacidad · Registro): quien entro, que ficha
   consulto y que cambio. Con datos de categoria especial hay que poder

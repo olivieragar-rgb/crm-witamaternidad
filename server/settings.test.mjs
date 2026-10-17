@@ -53,7 +53,7 @@ test('los catalogos se siembran con los valores de fabrica', async () => {
   assert.ok(types.clientService && types.mode && types.paymentMethod);
   assert.deepEqual(
     values.clientStatus.map((v) => v.value),
-    ['Nuevo contacto', 'Activa', 'Finalizada'],
+    ['Activa', 'Finalizada'],
   );
   assert.ok(values.clientStatus.every((v) => v.active));
 });
@@ -163,8 +163,8 @@ test('un campo de texto que no viene usa el DEFAULT de la tabla', async () => {
   assert.equal(cita.data.status, 'Programada');
   assert.equal(cita.data.mode, '', 'lo que no tiene DEFAULT si queda vacio');
 
-  // Y una clienta sin estado queda como nuevo contacto.
-  assert.equal((await a.post('/api/clients', { name: 'Sin estado' })).data.status, 'Nuevo contacto');
+  // Y una clienta sin estado queda como activa.
+  assert.equal((await a.post('/api/clients', { name: 'Sin estado' })).data.status, 'Activa');
 });
 
 test('la cuenta de desarrollo no existe fuera de local', async () => {

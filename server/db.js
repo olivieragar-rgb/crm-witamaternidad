@@ -97,7 +97,7 @@ const SCHEMA = `
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL, email TEXT NOT NULL DEFAULT '', phone TEXT NOT NULL DEFAULT '',
     service TEXT NOT NULL DEFAULT '', mode TEXT NOT NULL DEFAULT '', dueDate TEXT NOT NULL DEFAULT '',
-    status TEXT NOT NULL DEFAULT 'Nuevo contacto', notes TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'Activa', notes TEXT NOT NULL DEFAULT '',
     createdAt TEXT NOT NULL DEFAULT (datetime('now'))
   );
   CREATE TABLE IF NOT EXISTS services (
@@ -317,6 +317,12 @@ async function migrate() {
 
   // La primera version de la columna se creo con el pais sin tilde.
   await run("UPDATE clients SET country = 'España' WHERE country = 'Espana'");
+  // "Nuevo contacto" ya no es un estado: solo hay Activa y Finalizada. Las
+  // fichas que lo tuvieran pasan a Activa y la opcion sale de la lista. El
+  // DEFAULT de la columna no se puede cambiar en una base ya creada, asi que
+  // las altas sin estado lo ponen la aplicacion (ver `defaults` de las clientas).
+  await run("UPDATE clients SET status = 'Activa' WHERE status = 'Nuevo contacto'");
+  await run("DELETE FROM catalogs WHERE type = 'clientStatus' AND value = 'Nuevo contacto'");
   await backfillInvoiceSeries();
   await backfillInvoiceSnapshots();
   await checkDuplicateNumbers();
@@ -449,7 +455,7 @@ async function seed() {
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
     await run(c, ['Lucía Fernández', 'lucia@example.com', '600111222', 'Hipnoparto / Preparación al parto', 'Presencial (Granada)', day(26), 'Activa', 'Primer embarazo. Interesada en parto respetado.']);
     await run(c, ['Marta Ruiz', 'marta@example.com', '600333444', 'Lactancia', 'Online', '', 'Activa', 'Consulta de lactancia a las 3 semanas posparto.']);
-    await run(c, ['Nerea Gómez', 'nerea@example.com', '600555666', 'Consulta online', 'Online', day(54), 'Nuevo contacto', 'Escribió por el blog de hipnoparto.']);
+    await run(c, ['Nerea Gómez', 'nerea@example.com', '600555666', 'Consulta online', 'Online', day(54), 'Activa', 'Escribió por el blog de hipnoparto.']);
   }
 
   if ((await count('appointments')) === 0) {
