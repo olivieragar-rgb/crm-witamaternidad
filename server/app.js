@@ -8,6 +8,7 @@ import { invoicesRouter, invoiceWithItems, lineAmount } from './invoices.js';
 import { settingsRouter, getSetting } from './settings.js';
 import { catalogsRouter } from './catalogs.js';
 import { privacyRouter, auditRouter } from './privacy.js';
+import { consentFormsRouter, consentRouter } from './consent-forms.js';
 import { questionnairesRouter } from './questionnaires.js';
 import { calendarRouter } from './calendar.js';
 import { expensesRouter, taxesRouter } from './expenses.js';
@@ -193,6 +194,9 @@ app.use('/api/clients', privacyRouter);
 // cuestionario en el detalle. Si cayeran en ese middleware, cada lectura
 // quedaria registrada como "client_list", que es falso.
 app.use('/api/clients', questionnairesRouter);
+// Registrar que firmó o retiró el consentimiento: se audita sola, con su nombre.
+app.use('/api/clients', consentRouter);
+app.use('/api/consent-forms', consentFormsRouter);
 app.use('/api/audit', auditRouter);
 app.use('/api/expenses', expensesRouter);
 app.use('/api/taxes', taxesRouter);

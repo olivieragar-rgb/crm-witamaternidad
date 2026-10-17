@@ -353,6 +353,24 @@ export default function Settings({ me }) {
             subes no habrá forma de saber quién aceptó qué.
           </p>
           <SaveRow onSave={() => save('privacy')} saved={saved === 'privacy'} />
+
+          <h3 className="pending-title">Formularios para imprimir</h3>
+          <p className="muted small">
+            En blanco, con tus datos fiscales de Ajustes como responsable. En la ficha de cada clienta salen ya
+            con sus datos. Guarda antes los cambios de arriba: el consentimiento lleva el texto y la versión
+            guardados.
+          </p>
+          <div className="form-links">
+            <a className="btn" href={api.consentFormUrl('consentimiento')} target="_blank" rel="noreferrer">
+              Consentimiento
+            </a>
+            <a className="btn" href={api.consentFormUrl('revocacion')} target="_blank" rel="noreferrer">
+              Retirada del consentimiento
+            </a>
+            <a className="btn" href={api.consentFormUrl('derechos')} target="_blank" rel="noreferrer">
+              Solicitud de derechos
+            </a>
+          </div>
         </div>
       )}
 

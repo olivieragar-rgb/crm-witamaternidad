@@ -210,6 +210,11 @@ salud, categoria especial del Art. 9 del RGPD**. Lo que hace el sistema:
 
 - La ficha de clienta recoge el **consentimiento** con fecha, canal y version
   del texto aceptado. El texto se edita en Ajustes · Privacidad.
+- **Formularios en PDF** (consentimiento, retirada y solicitud de derechos),
+  rellenados con los datos de Ajustes y de la ficha. Desde la ficha se anota que
+  la clienta lo firmó o que lo retiró, y queda en el registro de accesos. Ver
+  [`docs/rgpd/formularios.md`](docs/rgpd/formularios.md): son una plantilla que
+  hay que revisar con la asesoría.
 - **Derecho de acceso y portabilidad**: el boton "Datos" descarga todo lo que
   el sistema guarda de esa clienta, con sus citas y sus facturas.
 - **Derecho de supresion**: "Anonimizar" vacia nombre, contacto, FPP, notas y

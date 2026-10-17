@@ -2330,3 +2330,15 @@ a.export {
 .help-tip {
   display: inline-flex;
 }
+
+/* Botones de los formularios de consentimiento. */
+.form-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+
+.consent-tools {
+  margin-top: 12px;
+}

@@ -74,6 +74,10 @@ export const api = {
   saveSettings: (key, body) => req('PUT', `/api/settings/${key}`, body),
 
   // Privacidad
+  // Consentimiento RGPD: registrar que lo dio o lo retiró, y los formularios en PDF.
+  consent: (id, body) => req('POST', `/api/clients/${id}/consent`, body),
+  consentFormUrl: (kind, clientId) =>
+    `/api/consent-forms/${kind}${clientId ? `?clientId=${clientId}` : ''}`,
   exportClientUrl: (id) => `/api/clients/${id}/export`,
   anonymize: (id, body) => req('POST', `/api/clients/${id}/anonymize`, body),
   retention: () => req('GET', '/api/clients/retention'),

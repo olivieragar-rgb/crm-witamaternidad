@@ -43,7 +43,8 @@ acompañamiento en lactancia), gestionar las citas y hacer el seguimiento.
 - Art. 6.1.b (ejecución del contrato) para los datos identificativos.
 - **Art. 9.2.a (consentimiento explícito)** para los datos de salud. El
   consentimiento se recoge en la ficha de la clienta (fecha, canal y versión
-  del texto aceptado) y el texto vive en Ajustes · Privacidad.
+  del texto aceptado) y el texto vive en Ajustes · Privacidad. El documento
+  que firma la clienta se genera desde la ficha (ver [`formularios.md`](formularios.md)).
 - Art. 9.2.h (asistencia sanitaria) podría aplicar según cómo esté encuadrada
   la actividad profesional. **A confirmar con la asesoría**: cambia qué hay que
   documentar.
@@ -134,6 +135,8 @@ clientas. Hay que resolverlo **antes de dar de alta a la primera clienta real**.
 - [ ] Firmar los contratos de encargado con los proveedores (`encargados.md`).
 - [ ] Publicar la política de privacidad y enlazarla desde donde se recoja el
       consentimiento.
+- [x] Formularios de consentimiento, retirada y derechos listos para imprimir
+      ([`formularios.md`](formularios.md)); falta que los revise la asesoría.
 
 ## Facturación electrónica (Verifactu)
 

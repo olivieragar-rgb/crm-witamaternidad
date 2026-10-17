@@ -26,6 +26,9 @@ const ACTION_LABELS = {
   client_list: 'Listado de clientas',
   client_export: 'Exportación de datos',
   client_anonymize: 'Anonimización',
+  consent_form: 'Formulario de consentimiento',
+  consent_grant: 'Consentimiento registrado',
+  consent_revoke: 'Consentimiento retirado',
   create: 'Alta',
   update: 'Cambio',
   delete: 'Borrado',
@@ -159,7 +162,7 @@ function AuditLog() {
     <div className="panel">
       <div className="filters">
         <span className="muted">Filtrar:</span>
-        {['', 'client_view', 'client_export', 'client_anonymize', 'login', 'login_fail'].map((act) => (
+        {['', 'client_view', 'client_export', 'client_anonymize', 'consent_grant', 'consent_revoke', 'login', 'login_fail'].map((act) => (
           <button
             key={act || 'todo'}
             className={'chip' + (action === act ? ' active' : '')}

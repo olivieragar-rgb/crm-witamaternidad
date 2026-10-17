@@ -4,6 +4,7 @@ import { searchItems } from '../search.js';
 import { Toolbar, Badge, Modal, Field, EmptyRow, SortTh } from '../components/ui.jsx';
 import { sortRows, nextSort } from '../lib/sort.js';
 import QuestionnaireModal from '../components/QuestionnaireModal.jsx';
+import ConsentTools from '../components/ConsentTools.jsx';
 import { kindForService } from '../data/questionnaires.js';
 import { useConfig, options } from '../config.jsx';
 
@@ -26,6 +27,7 @@ export default function Clients({ initialFilter }) {
   const [form, setForm] = useState(EMPTY);
   const [editingId, setEditingId] = useState(null);
   const [error, setError] = useState('');
+  const [consentOpen, setConsentOpen] = useState(false);
   // { client, kind, fromCreate }: el cuestionario abierto, y si venimos de
   // crear la ficha (entonces cerrar no cancela nada, es "mas tarde").
   const [formFor, setFormFor] = useState(null);
@@ -79,6 +81,7 @@ export default function Clients({ initialFilter }) {
     setForm({ ...EMPTY, status: options(config.catalogs.clientStatus)[0] ?? '' });
     setEditingId(null);
     setError('');
+    setConsentOpen(false);
     setOpen(true);
   }
   function edit(c) {
@@ -86,6 +89,7 @@ export default function Clients({ initialFilter }) {
     setForm({ ...EMPTY, ...Object.fromEntries(Object.keys(EMPTY).map((k) => [k, c[k] ?? EMPTY[k]])) });
     setEditingId(c.id);
     setError('');
+    setConsentOpen(false);
     setOpen(true);
   }
   async function save() {
@@ -288,7 +292,7 @@ export default function Clients({ initialFilter }) {
               </select>
             </Field>
           </div>
-          <details className="fiscal consent" open={!form.consentAt}>
+          <details className="fiscal consent" open={!form.consentAt || consentOpen}>
             <summary>Consentimiento (RGPD)</summary>
             <p className="muted small">
               Aquí guardas datos de salud, así que antes necesitas su permiso y poder demostrar cuándo y
@@ -307,6 +311,19 @@ export default function Clients({ initialFilter }) {
                 </select>
               </Field>
             </div>
+            <ConsentTools
+              clientId={editingId}
+              consentAt={form.consentAt}
+              consentChannel={form.consentChannel}
+              consentVersion={form.consentVersion}
+              channels={options(config.catalogs.consentChannel, '')}
+              currentVersion={config.privacy.consentVersion}
+              onChange={(fields) => {
+                setForm((f) => ({ ...f, ...fields }));
+                setConsentOpen(true);
+                load();
+              }}
+            />
           </details>
 
           <details className="fiscal" open={FISCAL.some((f) => form[f] && form[f] !== 'España')}>
